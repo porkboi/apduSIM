@@ -1,6 +1,6 @@
 Run the following
 
-```sudo python3 esim-apdu.py```
+```sudo python3 esim-cat.py```
 
 Write the APDUs you need, syntax:
 
