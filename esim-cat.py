@@ -1,9 +1,8 @@
 import subprocess
 import re
-import time
-import select
 import os
 import fcntl
+import json
 
 DEVICE_PATH = "/dev/ttyACM0"
 INITIAL_COMMANDS = [
@@ -21,6 +20,12 @@ response_full = ""
 latest_response = ""
 command_buffer = []
 parse_cmd = ""
+st = ""
+with open("dict.json", "w") as f:
+    json.dump({}, f, indent=2)
+
+with open("dict.json", "r") as f:
+    d = json.load(f)
 
 def format_apdu_command(hex_string):
     if len(hex_string) % 2 != 0:
@@ -28,24 +33,38 @@ def format_apdu_command(hex_string):
     bytes_list = [f"0x{hex_string[i:i+2]}" for i in range(0, len(hex_string), 2)]
     return f"[{' '.join(bytes_list)}"
 
+#ChatGPTed function
+def replace_env(match):
+    with open("dict.json", "r") as f:
+        d = json.load(f)
+        key = match.group(1)
+        return d[key]
+
 def parse_input_line(line):
-    match = re.fullmatch(r"([0-9a-fA-F]+)(?::\{(\d+)\})?", line.strip())
+    match = re.fullmatch(r"([0-9a-fA-F\[\]a-zA-Z0-9]+)(?::\{(\d+)\})?", line.strip())
     if not match:
         raise ValueError("Invalid input format.")
     hex_part = match.group(1)
+    if re.search(r"\[.*?\]", hex_part.lower()):
+        hex_part = re.sub(r'\[(.*?)\]', replace_env, hex_part.lower())
     repeat = int(match.group(2)) if match.group(2) else 1
     return hex_part.lower(), repeat
 
 def send_to_device_individually(commands):
     global response_full
+    global d
+    global st
+
+    with open("dict.json", "r") as f:
+        d = json.load(f)
 
     for cmd in commands:
         # If the command is the special "ar", resolve it dynamically
         if cmd == "ar":
 
-            #print(f"Received from device: {st}")
+            print(f"Received from device: {st}")
 
-            match = re.search(r'.*?0x..[\s,;:-]*0x61[\s,;:-]*0x([0-9a-fA-F]{2}).*?', st, re.DOTALL)
+            match = re.search(r'0x61[\s,;:-]*0x([0-9a-fA-F]{2}).*?', st, re.DOTALL)
 
             if match:
                 ab_hex = match.group(1).upper()
@@ -110,6 +129,35 @@ def read_all_from_device(timeout_sec=5):
     except Exception as e:
         return f"Error: {e}"
 
+def reverse_adjacent_pairs(n):
+    s = str(n)
+    result = []
+
+    # Step through two characters at a time
+    for i in range(0, len(s) - 1, 2):
+        result.append(s[i+1])
+        result.append(s[i])
+
+    # If there's an odd digit left at the end, append it as-is
+    if len(s) % 2 != 0:
+        result.append(s[-1])
+
+    return int(''.join(result))
+
+def add_to_json(key, val):
+    with open("dict.json", "r") as f:
+        data = json.load(f)
+        if not isinstance(data, dict):
+            data = {}
+        val1 = reverse_adjacent_pairs(val)
+        data[key] = str(val1)
+    try:
+        with open("dict.json", "w") as f:
+            json.dump(data, f, indent=2)
+        print(f"Added {key}:{val}")
+    except Exception as e:
+        print("Error adding to dict")
+
 def main():
     global command_buffer
     global parse_cmd
@@ -138,11 +186,21 @@ def main():
                 try:
                     sol = print_after_last_gt(response_full).split(" 0x")[13:23]
                     new_sol = [s[::-1] for s in sol]
-                    print(f"ICCID 1: {"".join(new_sol)}")
+                    val1 = "".join(new_sol)
+                    print(f"ICCID 1: {val1}")
+                    if val1.isnumeric():
+                        user_input2 = input("Save this as iccid1? Y/n > ").strip().lower()
+                        if user_input2 == "y":
+                            add_to_json("iccid1", val1)
                     try:
                         sol2 = print_after_last_gt(response_full).split(" 0x")[13 + 140:23 + 140]
                         new_sol2 = [s[::-1] for s in sol2]
-                        print(f"ICCID 2: {"".join(new_sol2)}")
+                        val2 = "".join(new_sol2)
+                        print(f"ICCID 2: {val2}")
+                        if val2.isnumeric():
+                            user_input2 = input("Save this as iccid2? Y/n > ").strip().lower()
+                            if user_input2 == "Y":
+                                add_to_json("iccid2", val2)
                     except Exception as e:
                         print(f"Error parsing ICCID 2: {e}")
                 except Exception as e:
@@ -151,6 +209,7 @@ def main():
             else:
                 print(f"Device Response: {print_after_last_gt(response_full)}")
             command_buffer = []
+            parse_cmd = ""
             #break
 
         elif user_input == "exit":
@@ -165,7 +224,7 @@ def main():
             parse_cmd = user_input[6:].upper()
             print(f"Set parse command to: {parse_cmd}")
 
-        elif re.match(r"^[0-9a-f]+(?::\{\d+\})?$", user_input):
+        else:
             try:
                 hex_string, repeat = parse_input_line(user_input)
                 apdu_command = format_apdu_command(hex_string)
@@ -173,8 +232,6 @@ def main():
                 print(f"Buffered {repeat}x: {apdu_command}")
             except ValueError as e:
                 print(f"Error: {e}")
-        else:
-            print("Invalid input. Enter a hex string, hex:{n}, or 'run'.")
 
 if __name__ == "__main__":
     main()
