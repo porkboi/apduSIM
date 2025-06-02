@@ -13,7 +13,7 @@ Run the following
 <h1>Usage</h1>
 Write the APDUs you need, syntax:
 
-```APDU:{number repeats}``` : It is what it is; reference [here](https://github.com/porkboi/apduSIM/blob/main/clipboard)
+```APDU:{number repeats}``` : It is what it is, called saved ```vars``` by calling [iccid1]; reference [here](https://github.com/porkboi/apduSIM/blob/main/clipboard)
 
 ```parse=kwargs``` : kwargs= ```GET.EID/GET.ICCID```
 
