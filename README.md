@@ -12,14 +12,17 @@ Run the following
 
 Write the APDUs you need, syntax:
 
-```APDU:{number repeats}``` it is what it is
+```APDU:{number repeats}``` It is what it is
+
 ```parse=kwargs``` kwagrs=GET.EID/GET.ICCID
-```ar``` : Auto-Response
-```run```
 
-Auto-config to Half-Duplex UART and CLK cycle generation.
+```ar``` : Auto-Response (up to 256 bytes)
 
-TODO:
+```run``` : Auto-config to Half-Duplex UART and CLK cycle generation.
+
+```exit``` : It is what it is
+
+<h1>TODO: </h1>
 - Save ```ICCIDs``` in ```ENV```
 - Provisioning Process
 - 
