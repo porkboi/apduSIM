@@ -134,15 +134,24 @@ def main():
                 except Exception as e:
                     print(f"Error parsing GET.EID: {e}")
             elif parse_cmd == "GET.ICCID":
+                #counter = 1
                 try:
                     sol = print_after_last_gt(response_full).split(" 0x")[13:23]
                     new_sol = [s[::-1] for s in sol]
-                    print(f"ICCID: {"".join(new_sol)}")
+                    print(f"ICCID 1: {"".join(new_sol)}")
+                    try:
+                        sol2 = print_after_last_gt(response_full).split(" 0x")[13 + 140:23 + 140]
+                        new_sol2 = [s[::-1] for s in sol2]
+                        print(f"ICCID 2: {"".join(new_sol2)}")
+                    except Exception as e:
+                        print(f"Error parsing ICCID 2: {e}")
                 except Exception as e:
-                    print(f"Error parsing GET.ICCID: {e}")
+                    print(f"Error parsing GET.ICCID 1: {e}")
+                    break
             else:
                 print(f"Device Response: {print_after_last_gt(response_full)}")
-            break
+            command_buffer = []
+            #break
 
         elif user_input == "exit":
             print("Exiting without sending.")
