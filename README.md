@@ -10,11 +10,12 @@ Run the following
 
 ```sudo python3 esim-cat.py```
 
+<h1>Usage</h1>
 Write the APDUs you need, syntax:
 
-```APDU:{number repeats}``` It is what it is
+```APDU:{number repeats}``` : It is what it is; reference [here](https://github.com/porkboi/apduSIM/blob/main/clipboard)
 
-```parse=kwargs``` kwagrs=GET.EID/GET.ICCID
+```parse=kwargs``` : kwargs= ```GET.EID/GET.ICCID```
 
 ```ar``` : Auto-Response (up to 256 bytes)
 
@@ -23,6 +24,7 @@ Write the APDUs you need, syntax:
 ```exit``` : It is what it is
 
 <h1>TODO: </h1>
+
 - Save ```ICCIDs``` in ```ENV```
 - Provisioning Process
-- 
+
