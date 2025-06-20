@@ -3,6 +3,7 @@ import re
 import os
 import fcntl
 import json
+import requests
 
 DEVICE_PATH = "/dev/ttyACM0"
 INITIAL_COMMANDS = [
@@ -157,6 +158,51 @@ def add_to_json(key, val):
         print(f"Added {key}:{val}")
     except Exception as e:
         print("Error adding to dict")
+
+def provision (domain : str, activation : str):
+    global command_buffer
+    global response_full
+
+    hex_string, repeat = "00a404000fa0000005591010ffffffff89000001", 7
+    apdu_command = format_apdu_command(hex_string)
+    command_buffer.extend([f"{apdu_command}"] * repeat)
+    print(f"Buffered {repeat}x: {apdu_command}")
+
+    #return
+    command_buffer.extend(f"{format_apdu_command("00c0000021")}")
+    print(f"\nSending each command to {DEVICE_PATH}...\n")
+    send_to_device_individually(command_buffer)
+    print("Reading response from device...")
+
+    #euiccchallenge
+    command_buffer.extend(f"{format_apdu_command("00e2910003bf2e00")}")
+    command_buffer.extend(f"{format_apdu_command("00c0000015")}")
+    print(f"\nSending each command to {DEVICE_PATH}...\n")
+    send_to_device_individually(command_buffer)
+    print("Reading response from device...")
+    var1 = print_after_last_gt(response_full)
+    print(var1) # string manipulation here -> hex2b64
+
+    #euiccinfo1
+    command_buffer.extend(f"{format_apdu_command("00e2910003bf2000")}")
+    command_buffer.extend(f"{format_apdu_command("00c0000038")}")
+    print(f"\nSending each command to {DEVICE_PATH}...\n")
+    send_to_device_individually(command_buffer)
+    print("Reading response from device...")
+    var2 = print_after_last_gt(response_full)
+    print(var2) # string manipulation here -> hex2b64
+
+    #es9p_initiate_authentication
+    tx = {
+        "smdpAddress":"consumer.e-sim.global",
+        "euiccChallenge":var1,
+        "euiccInfo1":var2
+    }
+    requests.post(url="", data=tx.json())
+
+
+
+    
 
 def main():
     global command_buffer
