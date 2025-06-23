@@ -164,6 +164,23 @@ def add_to_json(key, val):
 def longCommandToAPDUs (toSend : str):
     return [toSend[i:i+240] for i in range(0, len(toSend), 240)]
 
+def lbpp(toSend : str):
+    final = []
+    for i in range(83):
+        if (i==0):
+            final.append(f"00e2110078{toSend[0:240]}")
+        elif (i==1):
+            final.append(f"00e2910141{toSend[240:370]}")
+        elif (i==2):
+            final.append(f"00e291001c{toSend[370:426]}")
+        elif (i==3):
+            final.append(f"00e2910003{toSend[426:432]}")
+        elif (i==4):
+            final.append(f"00e2110078{toSend[432:672]}")
+        elif (i==5):
+            final.append(f"00e291014f{toSend[672:830]}")
+        
+
 def provision (domain : str, activation : str):
     global command_buffer
     global response_full
@@ -220,7 +237,7 @@ def provision (domain : str, activation : str):
                                   }{base64.b64decode(activation).hex()}"
     listOfCommands = longCommandToAPDUs(toSend)
     for cmdNo in range(len(listOfCommands)):
-        command_buffer.extend(f"00e2110{cmdNo}78{format_apdu_command(listOfCommands[cmdNo])}")
+        command_buffer.extend(format_apdu_command(f"00e2110{cmdNo}78{listOfCommands[cmdNo]}"))
     command_buffer.extend(f"{format_apdu_command("00e29107070435290611a100")}")
     command_buffer.extend(f"{format_apdu_command("00c0000000")}")
     print(f"\nSending each command to {DEVICE_PATH}...\n")
@@ -269,7 +286,7 @@ def provision (domain : str, activation : str):
                                 }{base64.b64decode(rx.smdpCertificate).hex()}"
     listOfCommands = longCommandToAPDUs(toSend)
     for cmdNo in range(len(listOfCommands)):
-        command_buffer.extend(f"00e2110{cmdNo}78{format_apdu_command(listOfCommands[cmdNo])}")
+        command_buffer.extend(format_apdu_command(f"00e2110{cmdNo}78{listOfCommands[cmdNo]}"))
     command_buffer.extend(f"{format_apdu_command("00e291060aa31bc405191353b0cfad")}")
     command_buffer.extend(f"{format_apdu_command("00c00000a2")}")
     print(f"\nSending each command to {DEVICE_PATH}...\n")
@@ -294,6 +311,16 @@ def provision (domain : str, activation : str):
     } '''
 
     #es10b_load_bound_profile_package
+    toSend = f"{base64.b64decode(rx.boundProfilePackage).hex()}"
+    listOfCommands = lbpp(toSend)
+    for cmd in listOfCommands:
+        command_buffer.extend(format_apdu_command(cmd))
+    print(f"\nSending each command to {DEVICE_PATH}...\n")
+    send_to_device_individually(command_buffer)
+    print("Reading response from device...")
+    res = print_after_last_gt(response_full)
+    print(res)
+
 
     
 
