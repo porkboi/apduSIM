@@ -166,19 +166,50 @@ def longCommandToAPDUs (toSend : str):
 
 def lbpp(toSend : str):
     final = []
-    for i in range(83):
+    strCount = 0
+    for i in range(227):
         if (i==0):
             final.append(f"00e2110078{toSend[0:240]}")
+            strCount+=240
         elif (i==1):
             final.append(f"00e2910141{toSend[240:370]}")
+            strCount+=130
         elif (i==2):
             final.append(f"00e291001c{toSend[370:426]}")
+            strCount+=(426-370)
         elif (i==3):
             final.append(f"00e2910003{toSend[426:432]}")
+            strCount+=6
         elif (i==4):
             final.append(f"00e2110078{toSend[432:672]}")
+            strCount+=(672-432)
         elif (i==5):
             final.append(f"00e291014f{toSend[672:830]}")
+            strCount+=(830-672)
+        elif (i==6):
+            final.append(f"00e291004c{toSend[830:982]}")
+            strCount+=(982-830)
+        elif (i==7):
+            final.append(f"00e2910004{toSend[982:990]}")
+            strCount+=8
+        elif (i==225):
+            final.append(f"00e2910143{toSend[-134:]}")
+            strCount+=134
+        elif (i==224):
+            final.append(f"00e2110078{toSend[-374:-134]}")
+            strCount+=240
+        elif (i==226):
+            final.append(f"00c00000b9")
+        else:
+            match (i+1)%9:
+                case 8:
+                    final.append(f"00e291083c{toSend[strCount:strCount+120]}")
+                    strCount+=120
+                case _:
+                    final.append(f"00e2110{(i+1)%9}78{toSend[strCount:strCount+240]}")
+                    strCount+=240
+                
+
         
 
 def provision (domain : str, activation : str):
