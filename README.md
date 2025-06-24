@@ -35,4 +35,4 @@ Run this tool in 1 bash terminal, and open another with:
 
 ```lpacRACK``` : Used to send illegal commands to eUICCs on esim, incurs an SW1/SW2 69 85 error. 
 
-```pcscRACK``` : Ued to illegally authenticate swapped SIM cards by disabling all warnings and rebuilding daemons to re-enable a new secure channel.
+```pcscRACK``` : Ued to illegally authenticate swapped SIM cards by disabling all warnings and rebuilding daemon to re-enable a new secure channel.
