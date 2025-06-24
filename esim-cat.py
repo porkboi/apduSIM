@@ -6,12 +6,12 @@ import json
 import requests
 import base64
 import re
+import certifi
 
 DEVICE_PATH = "/dev/ttyACM0"
 INITIAL_COMMANDS = [
     "m",
-    "4",
-    "y",
+    "4\r\ny",
     "W\r\n3.30\r\n50",
     "P",
     "G\r\n1\r\n3.57MHz\r\n50%",
@@ -209,8 +209,10 @@ def lbpp(toSend : str):
                     final.append(f"00e2110{(i+1)%9}78{toSend[strCount:strCount+240]}")
                     strCount+=240
                 
-
-        
+def hex_to_base64(hex_str):
+    bytesData = bytes.fromhex(hex_str)
+    base64Bytes = base64.b64encode(bytesData)
+    return base64Bytes.decode('utf-8')
 
 def provision (domain : str, activation : str):
     global command_buffer
@@ -222,27 +224,36 @@ def provision (domain : str, activation : str):
     print(f"Buffered {repeat}x: {apdu_command}")
 
     #return
-    command_buffer.extend(f"{format_apdu_command("00c0000021")}")
+    command_buffer.extend([f"{format_apdu_command("00c0000021")}"])
     print(f"\nSending each command to {DEVICE_PATH}...\n")
     send_to_device_individually(command_buffer)
+    command_buffer=[]
     print("Reading response from device...")
 
     #euiccchallenge
-    command_buffer.extend(f"{format_apdu_command("00e2910003bf2e00")}")
-    command_buffer.extend(f"{format_apdu_command("00c0000015")}")
+    command_buffer.extend([f"{format_apdu_command("00e2910003bf2e00")}"])
+    command_buffer.extend([f"{format_apdu_command("00c0000015")}"])
     print(f"\nSending each command to {DEVICE_PATH}...\n")
     send_to_device_individually(command_buffer)
+    command_buffer=[]
+    res1 = read_all_from_device()
+    print(res1)
     print("Reading response from device...")
-    var1 = base64.b64encode(print_after_last_gt(response_full))
+    data1 = re.sub(r'\s+0x', '', print_after_last_gt(res1)).strip()
+    var1 = hex_to_base64(data1)
     print(var1) # string manipulation here
 
     #euiccinfo1
-    command_buffer.extend(f"{format_apdu_command("00e2910003bf2000")}")
-    command_buffer.extend(f"{format_apdu_command("00c0000038")}")
+    command_buffer.extend([f"{format_apdu_command("00e2910003bf2000")}"])
+    command_buffer.extend([f"{format_apdu_command("00c0000038")}"])
     print(f"\nSending each command to {DEVICE_PATH}...\n")
     send_to_device_individually(command_buffer)
+    command_buffer=[]
     print("Reading response from device...")
-    var2 = base64.b64encode(print_after_last_gt(response_full))
+    res2 = read_all_from_device()
+    print(res2)
+    data2 = re.sub(r'\s+0x', '', print_after_last_gt(res2)).strip()
+    var2 = hex_to_base64(data2)
     print(var2) # string manipulation here
 
     #es9p_initiate_authentication
@@ -251,7 +262,7 @@ def provision (domain : str, activation : str):
         "euiccChallenge":var1,
         "euiccInfo1":var2
     }
-    rx = requests.post(url=f"https://{domain}/gsma/rsp2/es9plus/initiateConnection", json=tx.json())
+    rx = requests.post(url=f"https://{domain}/gsma/rsp2/es9plus/initiateConnection", data=str(tx), verify=certifi.where())
     '''rx: {
         "transactionId":var3,
         "serverSigned1":var4,
@@ -268,18 +279,19 @@ def provision (domain : str, activation : str):
                                   }{base64.b64decode(activation).hex()}"
     listOfCommands = longCommandToAPDUs(toSend)
     for cmdNo in range(len(listOfCommands)):
-        command_buffer.extend(format_apdu_command(f"00e2110{cmdNo}78{listOfCommands[cmdNo]}"))
-    command_buffer.extend(f"{format_apdu_command("00e29107070435290611a100")}")
-    command_buffer.extend(f"{format_apdu_command("00c0000000")}")
+        command_buffer.extend([format_apdu_command(f"00e2110{cmdNo}78{listOfCommands[cmdNo]}")])
+    command_buffer.extend([f"{format_apdu_command("00e29107070435290611a100")}"])
+    command_buffer.extend([f"{format_apdu_command("00c0000000")}"])
     print(f"\nSending each command to {DEVICE_PATH}...\n")
     send_to_device_individually(command_buffer)
+    command_buffer=[]
     print("Reading response from device...")
     var8 = ""
     res = print_after_last_gt(response_full)
     while re.search(r'\b61\s?00\b', res) :
         res_clean = re.sub(r'\s+', '', re.sub(r'\b61\s?00\b', '', res)).strip()
         var8 += res_clean
-        command_buffer.extend(f"{format_apdu_command("00c0000000")}")
+        command_buffer.extend([f"{format_apdu_command("00c0000000")}"])
         print(f"\nSending each command to {DEVICE_PATH}...\n")
         send_to_device_individually(command_buffer)
         print("Reading response from device...")
@@ -287,9 +299,10 @@ def provision (domain : str, activation : str):
     match = re.search(r'\b61\s?([0-9A-Fa-f]{2})', res)
     res_clean = re.sub(r'\s+', '', re.sub(r'\b61\s?([0-9A-Fa-f]{2})', '', res)).strip()
     var8 += res_clean
-    command_buffer.extend(f"{format_apdu_command(f"00c00000{match.group(1)}")}")
+    command_buffer.extend([f"{format_apdu_command(f"00c00000{match.group(1)}")}"])
     print(f"\nSending each command to {DEVICE_PATH}...\n")
     send_to_device_individually(command_buffer)
+    command_buffer=[]
     print("Reading response from device...")
     res = print_after_last_gt(response_full)
     res_clean = re.sub(r'\s+', '', re.sub(r'\b90\s?00\b', '', res)).strip()
@@ -302,7 +315,7 @@ def provision (domain : str, activation : str):
         "transactionId":rx.transactionId,
         "euiccInfo1":var8
     }
-    rx = requests.post(url=f"https://{domain}/gsma/rsp2/es9plus/authenticateClient", json=tx.json())
+    rx = requests.post(url=f"https://{domain}/gsma/rsp2/es9plus/authenticateClient", data=str(tx), verify=certifi.where())
     '''rx: {
         "transactionId" : var3,
         "profileMetadata" : var9,
@@ -317,11 +330,12 @@ def provision (domain : str, activation : str):
                                 }{base64.b64decode(rx.smdpCertificate).hex()}"
     listOfCommands = longCommandToAPDUs(toSend)
     for cmdNo in range(len(listOfCommands)):
-        command_buffer.extend(format_apdu_command(f"00e2110{cmdNo}78{listOfCommands[cmdNo]}"))
-    command_buffer.extend(f"{format_apdu_command("00e291060aa31bc405191353b0cfad")}")
-    command_buffer.extend(f"{format_apdu_command("00c00000a2")}")
+        command_buffer.extend([format_apdu_command(f"00e2110{cmdNo}78{listOfCommands[cmdNo]}")])
+    command_buffer.extend([f"{format_apdu_command("00e291060aa31bc405191353b0cfad")}"])
+    command_buffer.extend([f"{format_apdu_command("00c00000a2")}"])
     print(f"\nSending each command to {DEVICE_PATH}...\n")
     send_to_device_individually(command_buffer)
+    command_buffer=[]
     print("Reading response from device...")
     var13 = ""
     res = print_after_last_gt(response_full)
@@ -345,15 +359,13 @@ def provision (domain : str, activation : str):
     toSend = f"{base64.b64decode(rx.boundProfilePackage).hex()}"
     listOfCommands = lbpp(toSend)
     for cmd in listOfCommands:
-        command_buffer.extend(format_apdu_command(cmd))
+        command_buffer.extend([format_apdu_command(cmd)])
     print(f"\nSending each command to {DEVICE_PATH}...\n")
     send_to_device_individually(command_buffer)
+    command_buffer=[]
     print("Reading response from device...")
     res = print_after_last_gt(response_full)
     print(res)
-
-
-    
 
 def main():
     global command_buffer
@@ -418,12 +430,15 @@ def main():
             print("Buffered special 'ar' command.")
         
         elif user_input.startswith("provision"):
-            match = re.search(r'ac=LPA:$([^/]+)$(.+)', user_input)
+            match = re.search(r'\$(.*?)\$', user_input)
             if match:
                 domain = match.group(1)
-                activation = match.group(2)
-                print(f"Provisioning: {domain} @ {activation}")
-                provision(domain, activation)
+                match2 = re.search(r'\$([^$]+)$', user_input)
+                if match2:
+                    activation = match2.group(1)
+                    provision(domain, activation)
+                else:
+                    print("Fail")
             else:
                 print("Fail")
 
