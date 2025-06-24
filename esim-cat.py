@@ -417,6 +417,18 @@ def main():
             command_buffer.append("ar")
             print("Buffered special 'ar' command.")
         
+        elif user_input.startswith("provision"):
+            match = re.search(r'ac=LPA:$([^/]+)$(.+)', user_input)
+            if match:
+                domain = match.group(1)
+                activation = match.group(2)
+                print(f"Provisioning: {domain} @ {activation}")
+                provision(domain, activation)
+            else:
+                print("Fail")
+
+            
+
         elif user_input.startswith("parse="):
             parse_cmd = user_input[6:].upper()
             print(f"Set parse command to: {parse_cmd}")
