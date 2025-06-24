@@ -1,0 +1,10 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/porkboi/Downloads/lpac_2.2.1.orig/lpac-2.2.1/output/CMakeFiles/_CMakeLTOTest-C/src/foo.c
+

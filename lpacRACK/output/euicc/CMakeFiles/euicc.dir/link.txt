@@ -1,0 +1,2 @@
+"/usr/bin/gcc-ar-13" cr libeuicc.a CMakeFiles/euicc.dir/base64.c.o CMakeFiles/euicc.dir/derutil.c.o CMakeFiles/euicc.dir/es10a.c.o CMakeFiles/euicc.dir/es10b.c.o CMakeFiles/euicc.dir/es10c.c.o CMakeFiles/euicc.dir/es10c_ex.c.o CMakeFiles/euicc.dir/es8p.c.o CMakeFiles/euicc.dir/es9p.c.o CMakeFiles/euicc.dir/es9p_errors.c.o CMakeFiles/euicc.dir/euicc.c.o CMakeFiles/euicc.dir/hexutil.c.o CMakeFiles/euicc.dir/interface.c.o CMakeFiles/euicc.dir/sha256.c.o CMakeFiles/euicc.dir/tostr.c.o
+"/usr/bin/gcc-ranlib-13" libeuicc.a

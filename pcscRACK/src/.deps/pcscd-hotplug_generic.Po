@@ -1,0 +1,6 @@
+pcscd-hotplug_generic.o: hotplug_generic.c /usr/include/stdc-predef.h \
+ ../config.h hotplug.h ../src/PCSC/wintypes.h
+/usr/include/stdc-predef.h:
+../config.h:
+hotplug.h:
+../src/PCSC/wintypes.h:

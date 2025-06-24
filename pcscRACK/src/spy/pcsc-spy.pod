@@ -1,0 +1,87 @@
+=head1 NAME
+
+pcsc-spy - A PC/SC spy command
+
+=head1 SYNOPSIS
+
+pcsc-spy [B<-n>|B<--nocolor>] [B<-d>|B<--diffable>] [B<-h>|B<--help>]
+[B<-v>|B<--version>] [B<-t>|B<--thread>] [F<fifo_filename>]
+
+=head1 DESCRIPTION
+
+pcsc-spy displays PC/SC calls of an application. It must be used with
+the F<libpcscspy.so.0> library.
+
+To be able to spy the PC/SC layer, the application flow must be
+modified using C<LIBPCSCLITE_DELEGATE> so that all PC/SC calls are
+redirected.
+
+=head1 OPTIONS
+
+=over
+
+=item B<-d>, B<--diffable>
+
+Remove the variable parts (like handler values) from the output so that
+two execution can be more easily compared.
+
+=item B<-h>, B<--help>
+
+Display a short help text.
+
+=item B<-n>, B<--nocolor>
+
+Disable the output colorization (if you want redirect the output in a
+file for example).
+
+=item B<-v>, B<--version>
+
+Print the version of the F<pcsc-spy> program plus a copyright, a list of
+authors.
+
+=item B<-t>, B<--thread>
+
+Add a thread number before each line of log to identify the calls from
+the same threads.
+
+=back
+
+=head1 EXAMPLES
+
+We will use the C<LIBPCSCLITE_DELEGATE> environment variable to load our
+spying library.
+
+Example:
+
+ sh /usr/share/doc/libpcsclite-dev/setup_spy.sh
+ export LIBPCSCLITE_DELEGATE=/lib/x86_64-linux-gnu/libpcscspy.so.0
+
+ LIBPCSCLITE_DELEGATE=/lib/x86_64-linux-gnu/libpcscspy.so.0 my_application
+
+=head2 Starting the spy tool
+
+ pcsc-spy
+
+If a command argument is passed we use it instead of the default
+F<~/pcsc-spy> FIFO file. It is then possible to record an execution log
+and use pcsc-spy multiple times on the same log.
+
+To create the log file just do:
+
+ mkfifo ~/pcsc-spy
+ cat ~/pcsc-spy > logfile
+
+and run your PC/SC application.
+
+=head1 FILES
+
+F<~/pcsc-spy> FIFO file is used by F<libpcscspy.so.0> to send the raw
+log lines
+
+=head1 SEE ALSO
+
+L<pcscd(8)>
+
+=head1 AUTHOR
+
+This manual page was written by Ludovic Rousseau <rousseau@free.fr>

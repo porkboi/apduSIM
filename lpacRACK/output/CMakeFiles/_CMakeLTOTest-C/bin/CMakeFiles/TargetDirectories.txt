@@ -1,0 +1,4 @@
+/home/porkboi/Downloads/lpac_2.2.1.orig/lpac-2.2.1/output/CMakeFiles/_CMakeLTOTest-C/bin/CMakeFiles/foo.dir
+/home/porkboi/Downloads/lpac_2.2.1.orig/lpac-2.2.1/output/CMakeFiles/_CMakeLTOTest-C/bin/CMakeFiles/boo.dir
+/home/porkboi/Downloads/lpac_2.2.1.orig/lpac-2.2.1/output/CMakeFiles/_CMakeLTOTest-C/bin/CMakeFiles/edit_cache.dir
+/home/porkboi/Downloads/lpac_2.2.1.orig/lpac-2.2.1/output/CMakeFiles/_CMakeLTOTest-C/bin/CMakeFiles/rebuild_cache.dir

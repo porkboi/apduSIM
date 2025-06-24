@@ -1,0 +1,7 @@
+g_defines.lo: g_defines.c /usr/include/stdc-predef.h misc.h \
+ ../src/PCSC/winscard.h ../src/PCSC/pcsclite.h ../src/PCSC/wintypes.h
+/usr/include/stdc-predef.h:
+misc.h:
+../src/PCSC/winscard.h:
+../src/PCSC/pcsclite.h:
+../src/PCSC/wintypes.h:

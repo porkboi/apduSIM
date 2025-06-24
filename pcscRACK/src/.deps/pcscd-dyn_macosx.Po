@@ -1,0 +1,12 @@
+pcscd-dyn_macosx.o: dyn_macosx.c /usr/include/stdc-predef.h ../config.h \
+ misc.h ../src/PCSC/pcsclite.h ../src/PCSC/wintypes.h \
+ ../src/PCSC/debuglog.h dyn_generic.h \
+ /usr/lib/gcc/x86_64-linux-gnu/13/include/stdbool.h
+/usr/include/stdc-predef.h:
+../config.h:
+misc.h:
+../src/PCSC/pcsclite.h:
+../src/PCSC/wintypes.h:
+../src/PCSC/debuglog.h:
+dyn_generic.h:
+/usr/lib/gcc/x86_64-linux-gnu/13/include/stdbool.h:

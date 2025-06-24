@@ -1,0 +1,2 @@
+"/usr/bin/gcc-ar-13" cr libcjson-static.a "CMakeFiles/cjson-static.dir/cJSON.c.o" "CMakeFiles/cjson-static.dir/cJSON_ex.c.o"
+"/usr/bin/gcc-ranlib-13" libcjson-static.a

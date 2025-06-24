@@ -1,0 +1,2 @@
+"/usr/bin/gcc-ar-13" cr libeuicc-drivers.a "CMakeFiles/euicc-drivers.dir/driver.c.o" "CMakeFiles/euicc-drivers.dir/apdu/stdio.c.o" "CMakeFiles/euicc-drivers.dir/http/stdio.c.o" "CMakeFiles/euicc-drivers.dir/apdu/pcsc.c.o" "CMakeFiles/euicc-drivers.dir/apdu/at.c.o" "CMakeFiles/euicc-drivers.dir/http/curl.c.o"
+"/usr/bin/gcc-ranlib-13" libeuicc-drivers.a
