@@ -1,6 +1,14 @@
 <h1>apduSIM</h1>
 
-This software aims to allow users to send custom APDU commands over HDUART througha Bus Pirate to an eSIM card, while listening for responses.
+This software aims to allow users to send custom APDU commands over HDUART througha Bus Pirate to an eSIM card, while listening for responses. This is compabilitable with SGP.22/ ISO-7816 standards.
+
+<h1>Requirements</h1>
+
+- Ubuntu 24.04.2 LT
+- Python3
+- cmake
+- meson
+- Knowledge on how to use a CLI
 
 <h1>Ubuntu Setup</h1>
 
@@ -33,6 +41,6 @@ Run this tool in 1 bash terminal, and open another with:
 
 <h1>Other tools: </h1>
 
-```lpacRACK``` : Used to send illegal commands to eUICCs on esim, incurs an SW1/SW2 69 85 error. 
+```lpacRACK``` : Used to send illegal commands to eUICCs on esim, incurs an SW1/SW2 69 85 error. This is due to scp03 (and hence AES) keys, a security feature of eUICCs.
 
 ```pcscRACK``` : Ued to illegally authenticate swapped SIM cards by disabling all warnings and rebuilding daemon to re-enable a new secure channel.
