@@ -7,7 +7,7 @@ import requests
 import base64
 import re
 import certifi
-import ast
+import time
 
 DEVICE_PATH = "/dev/ttyACM0"
 INITIAL_COMMANDS = [
@@ -53,7 +53,7 @@ def parse_input_line(line):
     repeat = int(match.group(2)) if match.group(2) else 1
     return hex_part.lower(), repeat
 
-def send_to_device_individually(commands):
+def send_to_device_individually(commands, long=False, xxd=False):
     global response_full
     global d
     global st
@@ -74,7 +74,10 @@ def send_to_device_individually(commands):
                 cmd = f"00C00000{ab_hex}"
                 print(f"Resolved 'ar' to command: {cmd}")
                 full_cmd = f"\r\n{format_apdu_command(cmd)}\r\n"
-                subprocess.run(["bash", "-c", f"echo -e '{full_cmd}' > {DEVICE_PATH}"])
+                if not xxd:
+                    subprocess.run(["bash", "-c", f"echo -e '{full_cmd}' > {DEVICE_PATH}"])
+                else:
+                    subprocess.run(["bash", "-c", f"echo -e '{full_cmd}' | xxd -r -p > {DEVICE_PATH}"])
                 #time.sleep(0.1)  # Allow processing time
 
                 # Read and accumulate response
@@ -86,8 +89,10 @@ def send_to_device_individually(commands):
         else:
         # Wrap command in CRLF as required by Bus Pirate
             full_cmd = f"\r\n{cmd}\r\n"
-            subprocess.run(["bash", "-c", f"echo -e '{full_cmd}' > {DEVICE_PATH}"])
-            #time.sleep(0.1)  # Allow processing time
+            if not xxd:
+                subprocess.run(["bash", "-c", f"echo -e '{full_cmd}' > {DEVICE_PATH}"])
+            else:
+                subprocess.run(["bash", "-c", f"echo -e '{full_cmd}' | xxd -r -p > {DEVICE_PATH}"])
 
             # Read and accumulate response
             st = read_all_from_device()
@@ -270,7 +275,7 @@ def provision (domain : str, activation : str):
     print(data1)
     data2 = data1[5:-4]
     print(data2)
-    data3 = data2[12:]
+    data3 = data2[17:]
     print(data3)
     var1 = hex_to_base64(data3)
 
@@ -286,7 +291,7 @@ def provision (domain : str, activation : str):
     #print(data1)
     data2 = data1[5:-4]
     print(data2)
-    data3 = data2[2:]
+    data3 = data2[7:]
     print(data3)
     var2 = hex_to_base64(data3)
 
@@ -323,26 +328,27 @@ def provision (domain : str, activation : str):
                                   }{active}"
 
     print("Sending es10b")
-    new = longCommandToAPDUs(toSend)
-    listOfCommands = []
-    for i in new:
-        listOfCommands.append(i[:96])
-        listOfCommands.append(i[96:192])
-        listOfCommands.append(i[192:])
+    listOfCommands = longCommandToAPDUs(toSend)
+    #listOfCommands = []
+    #for i in new:
+    #    listOfCommands.append(i[:96])
+    #    listOfCommands.append(i[96:96*2])
+    #    listOfCommands.append(i[96*2:])
     print([len(i) for i in listOfCommands])
     command_buffer=[]
+    command_buffer.extend(["bridge"])
     print("Reading response from device...")
     for cmdNo in range(len(listOfCommands)):
         hex = f"{cmdNo:02x}"
-        if cmdNo%3 == 2:
-            command_buffer.extend([format_apdu_command(f"00e211{hex}18{listOfCommands[cmdNo]}")])
-        else:
-            command_buffer.extend([format_apdu_command(f"00e211{hex}30{listOfCommands[cmdNo]}")])
+        #if cmdNo%3==2:
+        command_buffer.extend([format_apdu_command(f"00e211{hex}78{listOfCommands[cmdNo]}")])
+        #else:
+        #    command_buffer.extend([format_apdu_command(f"00e211{hex}30{listOfCommands[cmdNo]}")])
     #command_buffer.extend([format_apdu_command(f"00e2110{int2hex(cmdNo+1)}5e{listOfCommands[cmdNo+1]}")])
-    command_buffer.extend([f"{format_apdu_command("00e29115070435290611a100")}"])
+    command_buffer.extend([f"{format_apdu_command("00e29107070435290611a100")}"])
     command_buffer.extend([f"{format_apdu_command("00c000001a")}"])
     print(f"\nSending each command to {DEVICE_PATH}...\n")
-    send_to_device_individually(command_buffer)
+    send_to_device_individually(command_buffer, long=True, xxd=True)
     command_buffer=[]
     print("Reading response from device...")
     var8 = ""
