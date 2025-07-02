@@ -174,45 +174,46 @@ def lbpp(toSend : str):
     strCount = 0
     for i in range(227):
         if (i==0):
-            final.append(f"00e2110078{toSend[0:240]}")
+            final.append(f"81e2110078{toSend[0:240]}")
             strCount+=240
         elif (i==1):
-            final.append(f"00e2910141{toSend[240:370]}")
+            final.append(f"81e2910141{toSend[240:370]}")
             strCount+=130
         elif (i==2):
-            final.append(f"00e291001c{toSend[370:426]}")
+            final.append(f"81e291001c{toSend[370:426]}")
             strCount+=(426-370)
         elif (i==3):
-            final.append(f"00e2910003{toSend[426:432]}")
+            final.append(f"81e2910003{toSend[426:432]}")
             strCount+=6
         elif (i==4):
-            final.append(f"00e2110078{toSend[432:672]}")
+            final.append(f"81e2110078{toSend[432:672]}")
             strCount+=(672-432)
         elif (i==5):
-            final.append(f"00e291014f{toSend[672:830]}")
+            final.append(f"81e291014f{toSend[672:830]}")
             strCount+=(830-672)
         elif (i==6):
-            final.append(f"00e291004c{toSend[830:982]}")
+            final.append(f"81e291004c{toSend[830:982]}")
             strCount+=(982-830)
         elif (i==7):
-            final.append(f"00e2910004{toSend[982:990]}")
+            final.append(f"81e2910004{toSend[982:990]}")
             strCount+=8
         elif (i==225):
-            final.append(f"00e2910143{toSend[-134:]}")
+            final.append(f"81e2910143{toSend[-134:]}")
             strCount+=134
         elif (i==224):
-            final.append(f"00e2110078{toSend[-374:-134]}")
+            final.append(f"81e2110078{toSend[-374:-134]}")
             strCount+=240
         elif (i==226):
-            final.append(f"00c00000b9")
+            final.append(f"81c00000b9")
         else:
             match (i+1)%9:
                 case 8:
-                    final.append(f"00e291083c{toSend[strCount:strCount+120]}")
+                    final.append(f"81e291083c{toSend[strCount:strCount+120]}")
                     strCount+=120
                 case _:
-                    final.append(f"00e2110{(i+1)%9}78{toSend[strCount:strCount+240]}")
+                    final.append(f"81e2110{(i+1)%9}78{toSend[strCount:strCount+240]}")
                     strCount+=240
+    return final
                 
 def hex_to_base64(hex_str):
     bytesData = bytes.fromhex(hex_str)
@@ -283,7 +284,7 @@ class SIMTransportLayer():
             #print(b)
             if ord(b) == b1[1]:
                 break
-            if b != '\x60':
+            if b != b'\x60':
                 sw1 = b
                 sw2 = self.rx()
                 nil = self.rx()
@@ -300,12 +301,15 @@ class SIMTransportLayer():
         data = bytes(0)
         while len(data) < toGet:
             b = self.rx()
-            if (toGet == 2) and (b == '\x60'):
+            if (toGet == 2) and (b == b'\x60'):
                 continue
             if not b:
                 break
             data += b
         
+        self.ser.flushInput()
+        self.ser.flushOutput()
+
         if len(data) < 2:
             return None, None
         #print(b2h(data[-2:]), b2h(data[:-2]))
@@ -376,7 +380,6 @@ def provision (domain : str, activation : str):
     } '''
 
     rx = rx_raw.json()
-    print(rx)
     var3 = rx["transactionId"]
     #es10b
     active= "a0248018544e32303234313132383133303934363635423830353242a10880"
@@ -438,9 +441,6 @@ def provision (domain : str, activation : str):
     #print(rx)
 
     #es10b
-    print(base64.b64decode(rx["smdpSigned2"]).hex())
-    print(base64.b64decode(rx["smdpSignature2"]).hex())
-    print(base64.b64decode(rx["smdpCertificate"]).hex())
     toSend = f"bf218202d5{base64.b64decode(rx["smdpSigned2"]).hex()
                             }{base64.b64decode(rx["smdpSignature2"]).hex()
                                 }{base64.b64decode(rx["smdpCertificate"]).hex()}"
@@ -455,7 +455,43 @@ def provision (domain : str, activation : str):
     sw, data = new.send_apdu(t)
     print(sw)
 
+    apdu = '81c00000a2'
+    t = bytearray.fromhex(apdu)
+    sw, data = new.send_apdu(t)
+    var13 = hex_to_base64(data)
+    tx = {
+        "transactionId": var3,
+        "prepareDownloadResponse": var13,
+    }
+    rx_raw = requests.post(url=f"https://{domain}/gsma/rsp2/es9plus/getBoundProfilePackage", 
+                        headers={
+                            "User-Agent": "gsma-rsp-lpad",
+                            "X-Admin-Protocol": "gsma/rsp/v2.2.0",
+                            "Content-Type": "application/json",
+                        },
+                        json=tx, 
+                        verify='certificate.pem')
+    rx = rx_raw.json()
+    boundProfile = base64.b64decode(rx["boundProfilePackage"]).hex()
+    listOfCommands = lbpp(boundProfile)
+    print([len(i) for i in listOfCommands])
+    for cmdNo in range(len(listOfCommands)):
+        try:
+            apdu = listOfCommands[cmdNo]
+            print(apdu)
+            t = bytearray.fromhex(apdu)
+            sw, data = new.send_apdu(t)
+        except Exception:
+            print(cmdNo)
+            break
+    print("Ok: ", sw, data)
+
+
+
 def provision2 (domain : str, activation : str):
+    ###
+    # DEPRECATED FUNCTION
+    ###
     global command_buffer
     global response_full
 
