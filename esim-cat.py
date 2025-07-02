@@ -262,7 +262,7 @@ class SIMTransportLayer():
         time.sleep(0.1)
         self.ser.flushInput()
         rst_meth(0)
-        print(b2h(self.ser.read(64)))
+        self.ser.read(64)
     
     def tx(self, b : bytearray):
         #print(b)
@@ -321,7 +321,6 @@ def provision (domain : str, activation : str):
     send_to_device_individually(command_buffer)
     command_buffer=[]
     new = SIMTransportLayer()
-    time.sleep(3)
 
     apdu = '0070000001'
     t = bytearray.fromhex(apdu)
@@ -330,12 +329,12 @@ def provision (domain : str, activation : str):
     apdu = '01a404000fa0000005591010ffffffff89000001'
     t = bytearray.fromhex(apdu)
     sw, data = new.send_apdu(t)
-    #print(sw, data)
 
     apdu = '01c0000021'
     t = bytearray.fromhex(apdu)
     sw, data = new.send_apdu(t)
 
+    print("es10b: GetEuiccChallenge")
     apdu = '81e2910003bf2e00'
     t = bytearray.fromhex(apdu)
     sw, data = new.send_apdu(t)
@@ -344,8 +343,8 @@ def provision (domain : str, activation : str):
     t = bytearray.fromhex(apdu)
     sw, data = new.send_apdu(t)
     var1 = hex_to_base64(data[10:])
-    print("euiccChallenge: ", var1)
 
+    print("es10b: GetEuiccInfo1")
     apdu = '81e2910003bf2000'
     t = bytearray.fromhex(apdu)
     sw, data = new.send_apdu(t)
@@ -353,11 +352,9 @@ def provision (domain : str, activation : str):
     apdu = '81c0000038'
     t = bytearray.fromhex(apdu)
     sw, data = new.send_apdu(t)
-    print(data)
     var2 = hex_to_base64(data)
-    print("euiccInfo1: ", var2)
 
-    #es9p_initiate_authentication
+    print("es9p: initiateAuthentication")
     tx = {
         "smdpAddress":domain,
         "euiccChallenge":var1,
@@ -381,8 +378,9 @@ def provision (domain : str, activation : str):
 
     rx = rx_raw.json()
     var3 = rx["transactionId"]
-    #es10b
-    active= "a0248018544e32303234313132383133303934363635423830353242a10880"
+
+    print("es10b: serverAuthenticate")
+    active= f"a0248018{activation.encode(encoding='ascii').hex()}a10880"
     toSend = f"bf3882034a{base64.b64decode(rx["serverSigned1"]).hex()
                             }{base64.b64decode(rx["serverSignature1"]).hex()
                               }{base64.b64decode(rx["euiccCiPKIdToBeUsed"]).hex()
@@ -390,7 +388,7 @@ def provision (domain : str, activation : str):
                                   }{active}"
     
     listOfCommands = longCommandToAPDUs(toSend)
-    print([len(i) for i in listOfCommands])
+    #print([len(i) for i in listOfCommands])
     for cmdNo in range(len(listOfCommands)):
         apdu = f"81e2110{cmdNo}78{listOfCommands[cmdNo]}"
         t = bytearray.fromhex(apdu)
@@ -398,7 +396,6 @@ def provision (domain : str, activation : str):
     apdu = '81e29107070435290611a100'
     t = bytearray.fromhex(apdu)
     sw, data = new.send_apdu(t)
-    print(sw)
     
     apdu = '81c0000000'
     t = bytearray.fromhex(apdu)
@@ -416,8 +413,7 @@ def provision (domain : str, activation : str):
     var8+=data
     val = hex_to_base64(var8)
 
-    #es9p_authenticate_client
-    print(var3, val)
+    print("es9p: authenticateClient")
     tx = {
         "transactionId": var3,
         "authenticateServerResponse": val,
@@ -440,12 +436,12 @@ def provision (domain : str, activation : str):
     rx = rx_raw.json()
     #print(rx)
 
-    #es10b
+    print("es10b: prepareDownoadResponse")
     toSend = f"bf218202d5{base64.b64decode(rx["smdpSigned2"]).hex()
                             }{base64.b64decode(rx["smdpSignature2"]).hex()
                                 }{base64.b64decode(rx["smdpCertificate"]).hex()}"
     listOfCommands = longCommandToAPDUs(toSend)
-    print([len(i) for i in listOfCommands])
+    #print([len(i) for i in listOfCommands])
     for cmdNo in range(len(listOfCommands)-1):
         apdu = f"81e2110{cmdNo}78{listOfCommands[cmdNo]}"
         t = bytearray.fromhex(apdu)
@@ -453,12 +449,13 @@ def provision (domain : str, activation : str):
     apdu = '81e291060aa31bc405191353b0cfad'
     t = bytearray.fromhex(apdu)
     sw, data = new.send_apdu(t)
-    print(sw)
 
     apdu = '81c00000a2'
     t = bytearray.fromhex(apdu)
     sw, data = new.send_apdu(t)
     var13 = hex_to_base64(data)
+
+    print("es9p: getBoundProfilePackage")
     tx = {
         "transactionId": var3,
         "prepareDownloadResponse": var13,
@@ -472,238 +469,125 @@ def provision (domain : str, activation : str):
                         json=tx, 
                         verify='certificate.pem')
     rx = rx_raw.json()
+
+    print("es10b: loadBoundProfilePackage")
     boundProfile = base64.b64decode(rx["boundProfilePackage"]).hex()
     listOfCommands = lbpp(boundProfile)
-    print([len(i) for i in listOfCommands])
+    #print([len(i) for i in listOfCommands])
     for cmdNo in range(len(listOfCommands)):
+        if cmdNo % 3 == 0:
+            print("#", end="", flush=True)
         try:
             apdu = listOfCommands[cmdNo]
-            print(apdu)
             t = bytearray.fromhex(apdu)
             sw, data = new.send_apdu(t)
         except Exception:
             print(cmdNo)
             break
-    print("Ok: ", sw, data)
+    print("\nOk: ", sw, data)
 
-
-
-def provision2 (domain : str, activation : str):
-    ###
-    # DEPRECATED FUNCTION
-    ###
+def print_res(new : SIMTransportLayer, sw : str, data1 : str, ctr : int):
+    #print(sw)
+    if sw == "9000":
+        return (ctr, data1)
+    elif sw == "6100":
+        apdu = '81c0000000'
+        t = bytearray.fromhex(apdu)
+        sw, data = new.send_apdu(t)
+        data1 += data
+        return print_res(new, sw, data1, ctr+1)
+    elif sw.startswith("61"):
+        apdu = f'81c00000{sw[-2:]}'
+        t = bytearray.fromhex(apdu)
+        sw, data = new.send_apdu(t)
+        data1 += data
+        #print(ctr, data1)
+        return (ctr, data1)
+    else:
+        raise(f"Error - {sw}")
+    
+def list_profile():
     global command_buffer
-    global response_full
-
-    hex_string = "0070000001"
-    apdu_command = format_apdu_command(hex_string)
-    command_buffer.extend([f"{apdu_command}"])
-    print("Logical Channel Opening")
-
-    command_buffer.extend(["P"])
-
-    hex_string, repeat = "00a404000fa0000005591010ffffffff89000001", 1
-    apdu_command = format_apdu_command(hex_string)
-    command_buffer.extend([f"{apdu_command}"] * repeat)
-    print(f"Buffered {repeat}x: {apdu_command}")
-
-    #return
-    command_buffer.extend([f"{format_apdu_command("00c0000021")}"])
-    print(f"\nSending each command to {DEVICE_PATH}...\n")
+    command_buffer.extend(["bridge"])
     send_to_device_individually(command_buffer)
     command_buffer=[]
-    print("Reading response from device...")
+    new = SIMTransportLayer()
+    #time.sleep(3)
 
-    #euiccchallenge
-    command_buffer.extend([f"{format_apdu_command("00e2910003bf2e00")}"])
-    command_buffer.extend([f"{format_apdu_command("00c0000015")}"])
-    print(f"\nSending each command to {DEVICE_PATH}...\n")
+    apdu = '0070000001'
+    t = bytearray.fromhex(apdu)
+    sw, data = new.send_apdu(t)
+
+    apdu = '01a404000fa0000005591010ffffffff89000001'
+    t = bytearray.fromhex(apdu)
+    sw, data = new.send_apdu(t)
+
+    apdu = '01c0000021'
+    t = bytearray.fromhex(apdu)
+    sw, data = new.send_apdu(t)
+
+    apdu = '81e2910003bf2d00'
+    t = bytearray.fromhex(apdu)
+    sw, data = new.send_apdu(t)
+
+    ctr, stri = print_res(new, sw, "", 0)
+
+    if ctr != 0:
+        print(stri[20:48])
+        print("Count next")
+    else:
+        print(stri[20:48])
+
+def get_eid():
+    global command_buffer
+    command_buffer.extend(["bridge"])
     send_to_device_individually(command_buffer)
     command_buffer=[]
-    #res1 = read_all_from_device()
-    print("Reading response from device...")
-    data1 = re.sub(r'\s+0x', '', print_after_last_gt(response_full)).strip()
-    print(data1)
-    data2 = data1[5:-4]
-    print(data2)
-    data3 = data2[17:]
-    print(data3)
-    var1 = hex_to_base64(data3)
+    new = SIMTransportLayer()
 
-    #euiccinfo1
-    command_buffer.extend([f"{format_apdu_command("00e2910003bf2000")}"])
-    command_buffer.extend([f"{format_apdu_command("00c0000038")}"])
-    print(f"\nSending each command to {DEVICE_PATH}...\n")
+    apdu = '0070000001'
+    t = bytearray.fromhex(apdu)
+    sw, data = new.send_apdu(t)
+
+    apdu = '01a404000fa0000005591010ffffffff89000001'
+    t = bytearray.fromhex(apdu)
+    sw, data = new.send_apdu(t)
+
+    apdu = '01c0000021'
+    t = bytearray.fromhex(apdu)
+    sw, data = new.send_apdu(t)
+
+    apdu = '81e2910006bf3e035c015a'
+    t = bytearray.fromhex(apdu)
+    sw, data = new.send_apdu(t)
+
+    (ctr, stri) = print_res(new, sw, data, 0)
+
+def delete_profile(iccid : str):
+    global command_buffer
+    command_buffer.extend(["bridge"])
     send_to_device_individually(command_buffer)
     command_buffer=[]
-    print("Reading response from device...")
-    #res2 = read_all_from_device(timeout_sec=5)
-    data1 = re.sub(r'\s+0x', '', print_after_last_gt(response_full)).strip()
-    #print(data1)
-    data2 = data1[5:-4]
-    print(data2)
-    data3 = data2[7:]
-    print(data3)
-    var2 = hex_to_base64(data3)
+    new = SIMTransportLayer()
 
-    #es9p_initiate_authentication
-    tx = {
-        "smdpAddress":domain,
-        "euiccChallenge":var1,
-        "euiccInfo1":var2,
-    }
-    rx_raw = requests.post(url=f"https://{domain}/gsma/rsp2/es9plus/initiateAuthentication", 
-                        headers={
-                            "User-Agent": "gsma-rsp-lpad",
-                            "X-Admin-Protocol": "gsma/rsp/v2.2.0",
-                            "Content-Type": "application/json",
-                        },
-                        json=tx, 
-                        verify='certificate.pem')
-    '''rx: {
-        "transactionId":var3,
-        "serverSigned1":var4,
-        "serverSignature1":var5,
-        "euiccCiPKIdToBeUsed":var6,
-        "serverCertificate":var7
-    } '''
+    apdu = '0070000001'
+    t = bytearray.fromhex(apdu)
+    sw, data = new.send_apdu(t)
 
-    rx = rx_raw.json()
-    print(rx)
-    #es10b
-    active= "a0248018544e32303234313132383133303934363635423830353242a10880"
-    toSend = f"bf3882034a{base64.b64decode(rx["serverSigned1"]).hex()
-                            }{base64.b64decode(rx["euiccCiPKIdToBeUsed"]).hex()
-                              }{base64.b64decode(rx["serverSignature1"]).hex()
-                                }{base64.b64decode(rx["serverCertificate"]).hex()
-                                  }{active}"
+    apdu = '01a404000fa0000005591010ffffffff89000001'
+    t = bytearray.fromhex(apdu)
+    sw, data = new.send_apdu(t)
 
-    print("Sending es10b")
-    listOfCommands = longCommandToAPDUs(toSend)
-    #listOfCommands = []
-    #for i in new:
-    #    listOfCommands.append(i[:96])
-    #    listOfCommands.append(i[96:96*2])
-    #    listOfCommands.append(i[96*2:])
-    print([len(i) for i in listOfCommands])
-    command_buffer=[]
-    command_buffer.extend(["bridge -s"])
-    send_to_device_individually(command_buffer, long=True)
-    command_buffer=[]
-    print("Start Serial")
-    ser = serial.Serial(
-        port="/dev/ttyACM0",
-        parity=serial.PARITY_EVEN,
-        bytesize=serial.EIGHTBITS,
-        stopbits=serial.STOPBITS_TWO,
-        timeout=1,
-        xonxoff=0,
-        rtscts=0,
-        baudrate=9600
-    )
-    for cmdNo in range(len(listOfCommands)):
-        hex = f"{cmdNo:02x}"
-        #if cmdNo%3==2:
-        #command_buffer.extend([format_apdu_command(f"00e211{hex}78{listOfCommands[cmdNo]}")])
-        firstFive = f"00e211{hex}78"
-        ser.write(bytearray.fromhex(firstFive))
-        r = ser.read()
-        print(r)
-        last = listOfCommands[cmdNo]
-        ser.write(bytearray.fromhex(last))
-        r = ser.read()
-        print(r)
-        #else:
-        #    command_buffer.extend([format_apdu_command(f"00e211{hex}30{listOfCommands[cmdNo]}")])
-    #command_buffer.extend([format_apdu_command(f"00e2110{int2hex(cmdNo+1)}5e{listOfCommands[cmdNo+1]}")])
-    command_buffer.extend([f"{format_apdu_command("00e29107070435290611a100")}"])
-    command_buffer.extend([f"{format_apdu_command("00c000001a")}"])
-    print(f"\nSending each command to {DEVICE_PATH}...\n")
-    send_to_device_individually(command_buffer, long=True)
-    command_buffer=[]
-    print("Reading response from device...")
-    var8 = ""
-    print(response_full)
-    res = print_after_last_gt(response_full)
-    while re.search(r'\b?61\s?00\b?', res) :
-        res_clean = re.sub(r'\s+', '', re.sub(r'\b?61\s?00\b?', '', res)).strip()
-        var8 += res_clean
-        command_buffer.extend([f"{format_apdu_command("00c0000000")}"])
-        print(f"\nSending each command to {DEVICE_PATH}...\n")
-        send_to_device_individually(command_buffer)
-        print("Reading response from device...")
-        res = print_after_last_gt(response_full)
-    match = re.search(r'\b?61\s?([0-9A-Fa-f]{2})', res)
-    res_clean = re.sub(r'\s+', '', re.sub(r'\b?61\s?([0-9A-Fa-f]{2})', '', res)).strip()
-    var8 += res_clean
-    command_buffer.extend([f"{format_apdu_command(f"00c00000{match.group(1)}")}"])
-    print(f"\nSending each command to {DEVICE_PATH}...\n")
-    send_to_device_individually(command_buffer)
-    command_buffer=[]
-    print("Reading response from device...")
-    res = print_after_last_gt(response_full)
-    res_clean = re.sub(r'\s+', '', re.sub(r'\b90\s?00\b', '', res)).strip()
-    var8 += res_clean
-    var8 = base64.b64encode(var8)
-    print(var8) # string manipulation here 
+    apdu = '01c0000021'
+    t = bytearray.fromhex(apdu)
+    sw, data = new.send_apdu(t)
 
-    #es9p_authenticate_client
-    tx = {
-        "transactionId":rx.transactionId,
-        "euiccInfo1":var8
-    }
-    rx = requests.post(url=f"https://{domain}/gsma/rsp2/es9plus/authenticateClient", data=str(tx), verify=certifi.where())
-    '''rx: {
-        "transactionId" : var3,
-        "profileMetadata" : var9,
-        "smdpSigned2" : var10,
-        "smdpSignature2" : var11,
-        "smdpCertificate" : var12
-    } '''
-    #es10b
-    toSend = f"bf218202d5{base64.b64decode(rx.smdpSigned2).hex()
-                            }{base64.b64decode(rx.smdpSignature2).hex()
-                                }{base64.b64decode(rx.smdpCertificate).hex()}"
-    new = []
-    listOfCommands = [new.extend([i[:96], i[96:192], i[192:]]) for i in longCommandToAPDUs(toSend)]
-    for cmdNo in range(len(listOfCommands)):
-        hex = f"{cmdNo:02x}"
-        command_buffer.extend([format_apdu_command(f"81e211{hex}3c{listOfCommands[cmdNo]}")])
-    command_buffer.extend([f"{format_apdu_command("81e291060aa31bc405191353b0cfad")}"])
-    command_buffer.extend([f"{format_apdu_command("81c00000a2")}"])
-    print(f"\nSending each command to {DEVICE_PATH}...\n")
-    send_to_device_individually(command_buffer)
-    command_buffer=[]
-    print("Reading response from device...")
-    var13 = ""
-    res = print_after_last_gt(response_full)
-    res_clean = re.sub(r'\s+', '', re.sub(r'\b90\s?00\b', '', res)).strip()
-    var13 += res_clean
-    var13 = base64.b64encode(var13)
-    print(var13) # string manipulation here
+    print(iccid[8:])
+    apdu = f'81e291000fbf330c5a0a{iccid[8:]}'
+    t = bytearray.fromhex(apdu)
+    sw, data = new.send_apdu(t)
 
-    #es9p_get_bound_package
-    tx = {
-        "transactionId":rx.transactionId,
-        "prepareDownloadResponse":var13
-    }
-    rx = requests.post(url=f"https://{domain}/gsma/rsp2/es9plus/getBoundProfilePackage", json=tx.json())
-    '''rx: {
-        "transactionId" : var3,
-        "boundProfilePackage" : var14
-    } '''
-
-    #es10b_load_bound_profile_package
-    toSend = f"{base64.b64decode(rx.boundProfilePackage).hex()}"
-    listOfCommands = lbpp(toSend)
-    for cmd in listOfCommands:
-        command_buffer.extend([format_apdu_command(cmd)])
-    print(f"\nSending each command to {DEVICE_PATH}...\n")
-    send_to_device_individually(command_buffer)
-    command_buffer=[]
-    print("Reading response from device...")
-    res = print_after_last_gt(response_full)
-    print(res)
+    ctr, stri = print_res(new, sw, data, 0)
 
 def main():
     global command_buffer
@@ -711,11 +595,11 @@ def main():
 
     command_buffer = [f"{cmd}" for cmd in INITIAL_COMMANDS]
     print("Initial commands added. \nEnter APDU commands (hex or hex:{n}) \n'parse=**' which could be GET.EID \n'ar' to auto-respond \n'run' to send \n'exit' to quit.")
-
+    listOfCmds = []
     while True:
         user_input = input("> ").strip().lower()
 
-        if user_input == "run":
+        if user_input == "runOld":
             print(f"\nSending each command to {DEVICE_PATH}...\n")
             send_to_device_individually(command_buffer)
             print("Reading response from device...")
@@ -759,10 +643,37 @@ def main():
             parse_cmd = ""
             #break
 
+        elif user_input == "run":
+            new = SIMTransportLayer()
+            for cmdNo in range(len(listOfCmds)):
+                try:
+                    apdu = listOfCmds[cmdNo]
+                    t = bytearray.fromhex(apdu)
+                    sw, data = new.send_apdu(t)
+                    print_res(new, sw, data, 0)
+                except Exception:
+                    print(cmdNo)
+                    break
+
+
         elif user_input == "exit":
             print("Exiting without sending.")
             break
         
+        elif user_input == "list":
+            list_profile()
+
+        elif user_input == "get_eid":
+            get_eid()
+        
+        elif user_input.startswith("delete"):
+            match = re.search(r'iccid=([0-9A-Za-z]+)', user_input)
+            if match:
+                iccid = match.group(1)
+                delete_profile(iccid)
+            else:
+                print("iccid missing")
+
         elif user_input == "ar":
             command_buffer.append("ar")
             print("Buffered special 'ar' command.")
@@ -773,7 +684,7 @@ def main():
                 domain = match.group(1)
                 match2 = re.search(r'\$([^$]+)$', user_input)
                 if match2:
-                    activation = match2.group(1)
+                    activation = match2.group(1).upper()
                     provision(domain, activation)
                 else:
                     print("Fail")
@@ -789,9 +700,10 @@ def main():
         else:
             try:
                 hex_string, repeat = parse_input_line(user_input)
-                apdu_command = format_apdu_command(hex_string)
-                command_buffer.extend([f"{apdu_command}"] * repeat)
-                print(f"Buffered {repeat}x: {apdu_command}")
+                #apdu_command = format_apdu_command(hex_string)
+                command_buffer.extend(["bridge"])
+                listOfCmds.extend([hex_string]*repeat)
+                print(f"Buffered {repeat}x: {hex_string}")
             except ValueError as e:
                 print(f"Error: {e}")
 
