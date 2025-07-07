@@ -1,0 +1,11 @@
+list
+get_eid
+delete iccid=
+
+provision ac=LPA:1$consumer.e-sim.global$TN2024112813094665B8052B OK
+provision ac=LPA:1$sim.express$172F842A76AB00488BF78C9BFD1D9562 OK
+provision ac=LPA:1$rsp1.cmlink.com$8326B49551D449789D31FFAE8AA213F3 #BANNED
+provision ac=LPA:1$rsp1.cmlink.com$F431B63C41C644CF843767AE1D8CA920 #BANNED
+provision ac=LPA:1$rsp1.cmlink.com$62F6158908384F5DA479875C25C7E518 #BANNED, OK
+provision ac=LPA:1$sim.express$80F1E6923EDBD8F9658A28FDFFC9C6B7 OK
+                                   

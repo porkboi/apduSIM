@@ -6,7 +6,6 @@ import json
 import requests
 import base64
 import re
-import certifi
 import serial
 import time
 
@@ -19,6 +18,7 @@ INITIAL_COMMANDS = [
     "binmode\r\n1\r\ny",
     "P"
 ]
+DEBUG_MODE=False
 
 response_full = ""
 latest_response = ""
@@ -113,7 +113,7 @@ def print_after_last_gt(s):
 def read_all_from_device(timeout_sec=0.5):
     """Runs `cat /dev/ttyACM0`, captures output, and returns the last line seen within timeout."""
     try:
-        with open("/dev/ttyACM0", "rb", buffering=0) as tty:
+        with open(DEVICE_PATH, "rb", buffering=0) as tty:
             # Set non-blocking mode
             fd = tty.fileno()
             flags = fcntl.fcntl(fd, fcntl.F_GETFL)
@@ -172,48 +172,75 @@ def longCommandToAPDUs (toSend : str):
 def lbpp(toSend : str):
     final = []
     strCount = 0
-    for i in range(227):
+    for i in range(999):
         if (i==0):
             final.append(f"81e2110078{toSend[0:240]}")
             strCount+=240
         elif (i==1):
-            final.append(f"81e2910141{toSend[240:370]}")
-            strCount+=130
+            val = int(toSend[16:18], 16)-120+9
+            final.append(f"81e29101{hex(val)[2:]}{toSend[strCount:strCount+val*2]}")
+            strCount+=val*2
         elif (i==2):
-            final.append(f"81e291001c{toSend[370:426]}")
-            strCount+=(426-370)
+            val = int(toSend[strCount+2:strCount+4], 16)
+            num = hex(val+2)[2:]
+            final.append(f"81e29100{num}{toSend[strCount:strCount+(val+2)*2]}")
+            strCount+=(val+2)*2
         elif (i==3):
-            final.append(f"81e2910003{toSend[426:432]}")
-            strCount+=6
-        elif (i==4):
-            final.append(f"81e2110078{toSend[432:672]}")
-            strCount+=(672-432)
-        elif (i==5):
-            final.append(f"81e291014f{toSend[672:830]}")
-            strCount+=(830-672)
-        elif (i==6):
-            final.append(f"81e291004c{toSend[830:982]}")
-            strCount+=(982-830)
-        elif (i==7):
-            final.append(f"81e2910004{toSend[982:990]}")
-            strCount+=8
-        elif (i==225):
-            final.append(f"81e2910143{toSend[-134:]}")
-            strCount+=134
-        elif (i==224):
-            final.append(f"81e2110078{toSend[-374:-134]}")
-            strCount+=240
-        elif (i==226):
-            final.append(f"81c00000b9")
-        else:
-            match (i+1)%9:
-                case 8:
-                    final.append(f"81e291083c{toSend[strCount:strCount+120]}")
-                    strCount+=120
-                case _:
-                    final.append(f"81e2110{(i+1)%9}78{toSend[strCount:strCount+240]}")
+            val = 0
+            while (toSend[strCount+val:strCount+val+2] != f"88"): #If it fails where check what's in the 'a1' string
+                val += 2
+            final.append(f"81e291000{val//2}{toSend[strCount:strCount+val]}")
+            strCount+=val
+            if val > 4:
+                go_back = (val//2-2)*2
+            else:
+                go_back = (val//2-1)*2
+            length_toSend = int(toSend[strCount-go_back:strCount], 16)
+            lengthList = []
+            while length_toSend > 120:
+                lengthList.append(120)
+                length_toSend-=120
+            lengthList.append(length_toSend)
+            for i in range(len(lengthList)):
+                if i != len(lengthList)-1:
+                    final.append(f"81e2110{i}78{toSend[strCount:strCount+240]}")
                     strCount+=240
-    return final
+                else:
+                    final.append(f"81e2910{i}{hex(lengthList[i])[2:]}{toSend[strCount:strCount+lengthList[i]*2]}")
+                    strCount+=lengthList[i]*2
+            if val > 4:
+                print(toSend[strCount:strCount+10])
+                val2 = int(toSend[strCount+2:strCount+4], 16)
+                num = hex(val2+2)[2:]
+                final.append(f"81e29100{num}{toSend[strCount:strCount+(val2+2)*2]}")
+                strCount+=(val2+2)*2
+                    
+        elif (i==4):
+            val = 0
+            while (toSend[strCount+val:strCount+val+2] != "86"):
+                val += 2
+            final.append(f"81e291000{val//2}{toSend[strCount:strCount+val]}")
+            strCount+=val
+        elif (i==5):
+            continue
+        else:
+            if len(toSend) - strCount <= 2040:
+                ctr = 0
+                while (len(toSend) - strCount) > 240:
+                    final.append(f"81e2110{(ctr)}78{toSend[strCount:strCount+240]}")
+                    strCount+=240
+                    ctr+=1
+                final.append(f"81e2910{ctr}{hex((len(toSend) - strCount)//2)[2:]}{toSend[strCount:]}")
+                return final
+            else:
+                for j in range(9):
+                    match j%9:
+                        case 8:
+                            final.append(f"81e291083c{toSend[strCount:strCount+120]}")
+                            strCount+=120
+                        case _:
+                            final.append(f"81e2110{j%9}78{toSend[strCount:strCount+240]}")
+                            strCount+=240
                 
 def hex_to_base64(hex_str):
     bytesData = bytes.fromhex(hex_str)
@@ -247,7 +274,7 @@ def int2hex(num : int):
 class SIMTransportLayer():
     def __init__(self):
         self.ser = serial.Serial(
-            port="/dev/ttyACM0",
+            port=DEVICE_PATH,
             parity=serial.PARITY_EVEN,
             bytesize=serial.EIGHTBITS,
             stopbits=serial.STOPBITS_TWO,
@@ -276,6 +303,9 @@ class SIMTransportLayer():
         return self.ser.read(len)
     
     def send_apdu(self, b1 : bytearray):
+        global DEBUG_MODE
+        if DEBUG_MODE:
+            print("TX: ", b2h(b1), flush=True)
         dataSize = b1[4]
         #print(b1[:5])
         self.tx(b1[:5])
@@ -312,16 +342,12 @@ class SIMTransportLayer():
 
         if len(data) < 2:
             return None, None
-        #print(b2h(data[-2:]), b2h(data[:-2]))
+        if DEBUG_MODE:
+            print("SW: ", b2h(data[-2:]), "Data: ", b2h(data[:-2]))
         return b2h(data[-2:]), b2h(data[:-2])
 
-def provision (domain : str, activation : str):
-    global command_buffer
-    command_buffer.extend(["bridge"])
-    send_to_device_individually(command_buffer)
-    command_buffer=[]
-    new = SIMTransportLayer()
-
+def provision (new : SIMTransportLayer, domain : str, activation : str):
+    global DEBUG_MODE
     apdu = '0070000001'
     t = bytearray.fromhex(apdu)
     sw, data = new.send_apdu(t)
@@ -376,11 +402,15 @@ def provision (domain : str, activation : str):
         "serverCertificate":var7
     } '''
 
+    #print(rx_raw)
     rx = rx_raw.json()
+    if DEBUG_MODE:
+        print(rx)
     var3 = rx["transactionId"]
 
     print("es10b: serverAuthenticate")
-    active= f"a0248018{activation.encode(encoding='ascii').hex()}a10880"
+    code = activation.encode(encoding='ascii').hex()
+    active= f"a0{hex(len(code)//2+12)[2:]}80{hex(len(code)//2)[2:]}{code}a108800435290611a100"
     toSend = f"bf3882034a{base64.b64decode(rx["serverSigned1"]).hex()
                             }{base64.b64decode(rx["serverSignature1"]).hex()
                               }{base64.b64decode(rx["euiccCiPKIdToBeUsed"]).hex()
@@ -388,12 +418,16 @@ def provision (domain : str, activation : str):
                                   }{active}"
     
     listOfCommands = longCommandToAPDUs(toSend)
-    #print([len(i) for i in listOfCommands])
-    for cmdNo in range(len(listOfCommands)):
+    for cmdNo in range(len(listOfCommands)-1):
         apdu = f"81e2110{cmdNo}78{listOfCommands[cmdNo]}"
         t = bytearray.fromhex(apdu)
         sw, data = new.send_apdu(t)
-    apdu = '81e29107070435290611a100'
+        #print(sw, apdu)
+    pad = "" 
+    if (len(listOfCommands[cmdNo+1])//2 < 16):
+        pad = "0"
+    apdu = f'81e2910{cmdNo+1}{pad}{hex(len(listOfCommands[cmdNo+1])//2)[2:]}{listOfCommands[cmdNo+1]}'
+    #print(apdu)
     t = bytearray.fromhex(apdu)
     sw, data = new.send_apdu(t)
     
@@ -410,6 +444,7 @@ def provision (domain : str, activation : str):
     apdu = f'81c00000{sw[-2:]}'
     t = bytearray.fromhex(apdu)
     sw, data = new.send_apdu(t)
+    #print(sw, data)
     var8+=data
     val = hex_to_base64(var8)
 
@@ -434,23 +469,29 @@ def provision (domain : str, activation : str):
         "smdpCertificate" : var12
     } '''
     rx = rx_raw.json()
-    #print(rx)
+    if DEBUG_MODE:
+        print(rx)
 
     print("es10b: prepareDownoadResponse")
-    toSend = f"bf218202d5{base64.b64decode(rx["smdpSigned2"]).hex()
-                            }{base64.b64decode(rx["smdpSignature2"]).hex()
-                                }{base64.b64decode(rx["smdpCertificate"]).hex()}"
+    vals = f"{base64.b64decode(rx["smdpSigned2"]).hex()
+                }{base64.b64decode(rx["smdpSignature2"]).hex()
+                    }{base64.b64decode(rx["smdpCertificate"]).hex()}"
+    toSend = f"bf21820{hex(len(vals)//2)[2:]}{vals}"
     listOfCommands = longCommandToAPDUs(toSend)
     #print([len(i) for i in listOfCommands])
     for cmdNo in range(len(listOfCommands)-1):
         apdu = f"81e2110{cmdNo}78{listOfCommands[cmdNo]}"
         t = bytearray.fromhex(apdu)
         sw, data = new.send_apdu(t)
-    apdu = '81e291060aa31bc405191353b0cfad'
+    pad = "" 
+    if (len(listOfCommands[cmdNo+1])//2 < 16):
+        pad = "0"
+    apdu = f'81e2910{cmdNo+1}{pad}{hex(len(listOfCommands[cmdNo+1])//2)[2:]}{listOfCommands[cmdNo+1]}'
+    #print(apdu)
     t = bytearray.fromhex(apdu)
     sw, data = new.send_apdu(t)
 
-    apdu = '81c00000a2'
+    apdu = f'81c00000{sw[2:]}'
     t = bytearray.fromhex(apdu)
     sw, data = new.send_apdu(t)
     var13 = hex_to_base64(data)
@@ -470,21 +511,32 @@ def provision (domain : str, activation : str):
                         verify='certificate.pem')
     rx = rx_raw.json()
 
+    if DEBUG_MODE:
+        print(rx)
+
     print("es10b: loadBoundProfilePackage")
     boundProfile = base64.b64decode(rx["boundProfilePackage"]).hex()
     listOfCommands = lbpp(boundProfile)
     #print([len(i) for i in listOfCommands])
     for cmdNo in range(len(listOfCommands)):
-        if cmdNo % 3 == 0:
-            print("#", end="", flush=True)
+        #if cmdNo % 3 == 0:
+            #print("#", end="", flush=True)
         try:
             apdu = listOfCommands[cmdNo]
             t = bytearray.fromhex(apdu)
             sw, data = new.send_apdu(t)
-        except Exception:
-            print(cmdNo)
-            break
-    print("\nOk: ", sw, data)
+            print(apdu, flush=True)
+            print(sw, flush=True)
+        except Exception as e:
+            print("\n Error:" ,cmdNo, e)
+            return
+    
+    print(sw)
+    apdu = f'81c00000{sw[2:]}'
+    t = bytearray.fromhex(apdu)
+    sw, data = new.send_apdu(t)
+    print("Ok: ", sw, data)
+    
 
 def print_res(new : SIMTransportLayer, sw : str, data1 : str, ctr : int):
     #print(sw)
@@ -506,13 +558,7 @@ def print_res(new : SIMTransportLayer, sw : str, data1 : str, ctr : int):
     else:
         raise(f"Error - {sw}")
     
-def list_profile():
-    global command_buffer
-    command_buffer.extend(["bridge"])
-    send_to_device_individually(command_buffer)
-    command_buffer=[]
-    new = SIMTransportLayer()
-    #time.sleep(3)
+def list_profile(new):
 
     apdu = '0070000001'
     t = bytearray.fromhex(apdu)
@@ -532,19 +578,16 @@ def list_profile():
 
     ctr, stri = print_res(new, sw, "", 0)
 
-    if ctr != 0:
-        print(stri[20:48])
-        print("Count next")
-    else:
-        print(stri[20:48])
+    #print(stri)
 
-def get_eid():
-    global command_buffer
-    command_buffer.extend(["bridge"])
-    send_to_device_individually(command_buffer)
-    command_buffer=[]
-    new = SIMTransportLayer()
+    val = 0
+    while val+4<len(stri):
+        if stri[val:val+4] == "5a0a":
+            print("iccid: ", stri[val+4:val+24])
+        val+=2
 
+
+def get_eid(new):
     apdu = '0070000001'
     t = bytearray.fromhex(apdu)
     sw, data = new.send_apdu(t)
@@ -562,14 +605,9 @@ def get_eid():
     sw, data = new.send_apdu(t)
 
     (ctr, stri) = print_res(new, sw, data, 0)
+    print("EID: ", stri[10:])
 
-def delete_profile(iccid : str):
-    global command_buffer
-    command_buffer.extend(["bridge"])
-    send_to_device_individually(command_buffer)
-    command_buffer=[]
-    new = SIMTransportLayer()
-
+def delete_profile(new, iccid : str):
     apdu = '0070000001'
     t = bytearray.fromhex(apdu)
     sw, data = new.send_apdu(t)
@@ -582,24 +620,33 @@ def delete_profile(iccid : str):
     t = bytearray.fromhex(apdu)
     sw, data = new.send_apdu(t)
 
-    print(iccid[8:])
-    apdu = f'81e291000fbf330c5a0a{iccid[8:]}'
+    apdu = f'81e291000fbf330c5a0a{iccid}'
     t = bytearray.fromhex(apdu)
     sw, data = new.send_apdu(t)
 
     ctr, stri = print_res(new, sw, data, 0)
+    print("9000", stri)
 
 def main():
     global command_buffer
     global parse_cmd
+    global DEBUG_MODE
 
     command_buffer = [f"{cmd}" for cmd in INITIAL_COMMANDS]
-    print("Initial commands added. \nEnter APDU commands (hex or hex:{n}) \n'parse=**' which could be GET.EID \n'ar' to auto-respond \n'run' to send \n'exit' to quit.")
+    print("Initial commands added. \nEnter APDU commands (hex or hex:{n}) \n'parse=**' which could be GET.EID \n'ar' to auto-respond \n'runOld' to send \n'exit' to quit.")
+    print("You can alo use the pre-programmed APDUs: \n'list' \n'delete iccid=***' \n'provision ac=***' \n'get_eid'")
+    print("'d' for Debug Mode")
     listOfCmds = []
+    command_buffer.extend(["bridge"])
+    send_to_device_individually(command_buffer)
+    command_buffer=[]
+    new = SIMTransportLayer()
     while True:
         user_input = input("> ").strip().lower()
 
-        if user_input == "runOld":
+        if user_input == "d":
+            DEBUG_MODE = True
+        elif user_input == "runOld":
             print(f"\nSending each command to {DEVICE_PATH}...\n")
             send_to_device_individually(command_buffer)
             print("Reading response from device...")
@@ -661,16 +708,18 @@ def main():
             break
         
         elif user_input == "list":
-            list_profile()
+            list_profile(new)
 
         elif user_input == "get_eid":
-            get_eid()
+            get_eid(new)
         
         elif user_input.startswith("delete"):
             match = re.search(r'iccid=([0-9A-Za-z]+)', user_input)
             if match:
                 iccid = match.group(1)
-                delete_profile(iccid)
+                delete_profile(new, iccid)
+                print("Left:")
+                list_profile(new)
             else:
                 print("iccid missing")
 
@@ -685,7 +734,7 @@ def main():
                 match2 = re.search(r'\$([^$]+)$', user_input)
                 if match2:
                     activation = match2.group(1).upper()
-                    provision(domain, activation)
+                    provision(new, domain, activation)
                 else:
                     print("Fail")
             else:
