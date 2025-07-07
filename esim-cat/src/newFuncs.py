@@ -80,19 +80,6 @@ def lbpp(toSend : str):
                             strCount+=240
 
 def provision (new : SIMTransportLayer, domain : str, activation : str):
-    global DEBUG_MODE
-    apdu = '0070000001'
-    t = bytearray.fromhex(apdu)
-    sw, data = new.send_apdu(t)
-
-    apdu = '01a404000fa0000005591010ffffffff89000001'
-    t = bytearray.fromhex(apdu)
-    sw, data = new.send_apdu(t)
-
-    apdu = '01c0000021'
-    t = bytearray.fromhex(apdu)
-    sw, data = new.send_apdu(t)
-
     print("es10b: GetEuiccChallenge")
     apdu = '81e2910003bf2e00'
     t = bytearray.fromhex(apdu)
@@ -252,8 +239,8 @@ def provision (new : SIMTransportLayer, domain : str, activation : str):
     listOfCommands = lbpp(boundProfile)
     #print([len(i) for i in listOfCommands])
     for cmdNo in range(len(listOfCommands)):
-        #if cmdNo % 3 == 0:
-            #print("#", end="", flush=True)
+        if cmdNo % 3 == 0 and not config.DEBUG_MODE:
+            print("#", end="", flush=True)
         try:
             apdu = listOfCommands[cmdNo]
             t = bytearray.fromhex(apdu)
@@ -293,18 +280,6 @@ def print_res(new : SIMTransportLayer, sw : str, data1 : str, ctr : int):
     
 def list_profile(new):
 
-    apdu = '0070000001'
-    t = bytearray.fromhex(apdu)
-    sw, data = new.send_apdu(t)
-
-    apdu = '01a404000fa0000005591010ffffffff89000001'
-    t = bytearray.fromhex(apdu)
-    sw, data = new.send_apdu(t)
-
-    apdu = '01c0000021'
-    t = bytearray.fromhex(apdu)
-    sw, data = new.send_apdu(t)
-
     apdu = '81e2910003bf2d00'
     t = bytearray.fromhex(apdu)
     sw, data = new.send_apdu(t)
@@ -321,18 +296,6 @@ def list_profile(new):
 
 
 def get_eid(new):
-    apdu = '0070000001'
-    t = bytearray.fromhex(apdu)
-    sw, data = new.send_apdu(t)
-
-    apdu = '01a404000fa0000005591010ffffffff89000001'
-    t = bytearray.fromhex(apdu)
-    sw, data = new.send_apdu(t)
-
-    apdu = '01c0000021'
-    t = bytearray.fromhex(apdu)
-    sw, data = new.send_apdu(t)
-
     apdu = '81e2910006bf3e035c015a'
     t = bytearray.fromhex(apdu)
     sw, data = new.send_apdu(t)
@@ -341,18 +304,6 @@ def get_eid(new):
     print("EID: ", stri[10:])
 
 def delete_profile(new, iccid : str):
-    apdu = '0070000001'
-    t = bytearray.fromhex(apdu)
-    sw, data = new.send_apdu(t)
-
-    apdu = '01a404000fa0000005591010ffffffff89000001'
-    t = bytearray.fromhex(apdu)
-    sw, data = new.send_apdu(t)
-
-    apdu = '01c0000021'
-    t = bytearray.fromhex(apdu)
-    sw, data = new.send_apdu(t)
-
     apdu = f'81e291000fbf330c5a0a{iccid}'
     t = bytearray.fromhex(apdu)
     sw, data = new.send_apdu(t)

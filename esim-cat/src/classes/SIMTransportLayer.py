@@ -30,6 +30,17 @@ class SIMTransportLayer():
         self.ser.flushInput()
         rst_meth(0)
         self.ser.read(64)
+        apdu = '0070000001'
+        t = bytearray.fromhex(apdu)
+        sw, data = self.send_apdu(t)
+
+        apdu = '01a404000fa0000005591010ffffffff89000001'
+        t = bytearray.fromhex(apdu)
+        sw, data = self.send_apdu(t)
+
+        apdu = '01c0000021'
+        t = bytearray.fromhex(apdu)
+        sw, data = self.send_apdu(t)
     
     def tx(self, b : bytearray):
         #print(b)
