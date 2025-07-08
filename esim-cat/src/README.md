@@ -22,7 +22,13 @@ newFuncs are described first, then oldFuncs.
     - [es10b: prepareDownoadResponse](#es10b-preparedownoadresponse)
     - [es9p: getBoundProfilePackage](#es9p-getboundprofilepackage)
     - [es10b: loadBoundProfilePackage](#es10b-loadboundprofilepackage)
-- [oldFuncs](#oldFuncs)
+- [oldFuncs](#oldfuncs)
+  - [format_apdu_commands](#format_apdu_commands)
+  - [replace_env](#replace_env)
+  - [send_to_device_individually](#send_to_device_individually)
+  - [print_after_last_gt](#print_after_last_gt)
+  - [read_all_from_device](#read_all_from_device)
+  - [reverse_adjacent_pairs](#reverse_adjacent_pairs)
 
 ---
 
@@ -250,6 +256,25 @@ Morphs an APDu to a properly-formatted HDUART command.
 81c0000000 -> [0x81 0xc0 0x00 0x00 0x00
 ```
 
-## `
+## `replace_env`
+
+Inserts (temp) saved variables into the function.
+
+## `send_to_device_individually`
+
+Sends commands in ```config.command_buffer``` to ```config.DEVICE_PATH``` by ```echo -e```, as we are designing this with the Bus Pirate API in mind, functions are also wrapped with ```\r\n{cmd}\r\n```
+
+## `print_after_last_gt`
+
+Sends what is after the last ">" sign.
+
+## `read_all_from_device`
+
+Runs `cat /dev/ttyACM0`, captures output, and returns the last line seen within timeout, note another ```cat``` instance cannot be open.
+
+## `reverse_adjacent_pairs`
+
+Big endian to little endian and vice versa
+
 
 
