@@ -1,7 +1,26 @@
-
 # `newFuncs`
 
 The pre-programmed functions.
+
+---
+
+## Contents
+
+- [SIMTransportLayer](#simtransportlayer)
+- [list](#list)
+- [get_eid](#get_eid)
+- [delete_profile](#delete_profile)
+- [Provisioning](#provisioning)
+  - [@SENDING_LOOP](#sending_loop)
+  - [@RECEIVING_LOOP](#receiving_loop)
+  - [es10b: GetEuiccChallenge](#es10b-geteuiccchallenge)
+  - [es10b: GetEuiccInfo1](#es10b-geteuiccinfo1)
+  - [es9p: InitiateAuthentication](#es9p-initiateauthentication)
+  - [es10b: serverAuthenticate](#es10b-serverauthenticate)
+  - [es9p: authenticateClient](#es9p-authenticateclient)
+  - [es10b: prepareDownoadResponse](#es10b-preparedownoadresponse)
+  - [es9p: getBoundProfilePackage](#es9p-getboundprofilepackage)
+  - [es10b: loadBoundProfilePackage](#es10b-loadboundprofilepackage)
 
 ---
 
@@ -68,7 +87,7 @@ If response is `61xy`, send:
 
 ---
 
-### `es10b: GetEuiccChallenge`
+## `es10b: GetEuiccChallenge`
 
 - **APDUs**:
   ```
@@ -78,7 +97,7 @@ If response is `61xy`, send:
 
 ---
 
-### `es10b: GetEuiccInfo1`
+## `es10b: GetEuiccInfo1`
 
 - **APDUs**:
   ```
@@ -88,7 +107,7 @@ If response is `61xy`, send:
 
 ---
 
-### `es9p: InitiateAuthentication`
+## `es9p: InitiateAuthentication`
 
 Makes an HTTP `POST` request to the SMDP+ server with parameters:
 
@@ -114,7 +133,7 @@ rx = {
 
 ---
 
-### `es10b: serverAuthenticate`
+## `es10b: serverAuthenticate`
 
 Form a consolidated data string:
 
@@ -134,7 +153,7 @@ Then:
 
 ---
 
-### `es9p: authenticateClient`
+## `es9p: authenticateClient`
 
 Makes an HTTP `POST` request to the SMDP+ server with parameters:
 
@@ -159,7 +178,7 @@ rx = {
 
 ---
 
-### `es10b: prepareDownoadResponse`
+## `es10b: prepareDownoadResponse`
 
 Form a consolidated data string:
 
@@ -177,7 +196,7 @@ Then:
 
 ---
 
-### `es9p: getBoundProfilePackage`
+## `es9p: getBoundProfilePackage`
 
 Makes an HTTP `POST` request to the SMDP+ server with parameters:
 
@@ -199,41 +218,27 @@ rx = {
 
 ---
 
-### `es10b: loadBoundProfilePackage`
+## `es10b: loadBoundProfilePackage`
 
 Form a consolidated data string:
 
-Line 1: ```python
-81e2110078{first 120 bytes of data}
+```python
+81e2110078{first 120 bytes of data}  # Line 1
+
+81e29101{length of 8th bytes - 111}{the computed number of bytes}  # Line 2
+
+81e29100{2nd byte of the next block + 2}{computed number of bytes of data}  # Line 3 "a0 line"
+
+81e29100{number of bytes to the next "88"}{computed number of bytes of data}  # Line 4 "a1 line"
+
+# Line 5: If Line 4 is more than 2 bytes, the length we look at is bytes -2, else it is bytes -1
+# Go to @SENDING_LOOP
+
+81e29100{2nd byte of the next block + 2}{computed number of bytes of data}  # Line 6 "a2 line (optional)"
+
+81e29100{number of bytes to the next "86"}{computed number of bytes of data}  # Line 7 "a3 line"
 ```
 
-Line 2: ```python
-81e29101{length of 8th bytes - 111}{the computed number of bytes}
-```
+From here, files operate on a 9-cycle: the first 8 are 120 bytes long, and the last is 60 bytes long. Each represents an EF to write.
 
-Line 3: "a0 line" ```python
-81e29100{2nd byte of the next block + 2}{computed number of bytes of data}
-```
-
-Line 4: "a1 line" ```python
-81e29100{number of bytes to the next "88"}{computed number of bytes of data}
-```
-
-Line 5: "If Line 4 is more than 2 bytes, the length we look at is bytes -2, else it is bytes -1" 
-- Go to `@SENDING_LOOP`
-
-Line 6: "a2 line : Optional, only if Line 4 > 2 bytes" ```python
-81e29100{2nd byte of the next block + 2}{computed number of bytes of data}
-```
-
-Line 7: "a3 line" ```python
-81e29100{number of bytes to the next "86"}{computed number of bytes of data}
-```
-
-From here files operate on a 9-cycle, the first 8 are 120bytes long, and the last will be 60 bytes long. Each represents an EF to write.
-- Go to `@SENDING_LOOP`
-
-Until the remaining bytes are less than 1020, then it just wraps up.
-- Go to `@SENDING_LOOP`
-
----
+- Go to `@SENDING_LOOP` until remaining bytes are < 1020, then wrap up.
