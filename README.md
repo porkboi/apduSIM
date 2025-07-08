@@ -17,7 +17,7 @@ Find and ensure the port connected to your Bus Pirate is the ASCII port ```/dev/
 Run the following
 
 <h2>eSIM-cat</h2>
-This software aims to allow users to send custom APDU commands over HDUART througha Bus Pirate to an eSIM card, while listening for responses. This is compabilitable with SGP.22/ ISO-7816 standards.
+This software aims to allow users to send custom APDU commands over HDUART through a Bus Pirate to an eSIM card, while listening for responses. This is compabilitable with SGP.22/ ISO-7816 standards, and does not need a SmartCard Reader.
 
 <h3>Setup</h3>
 
@@ -25,7 +25,7 @@ Run ```cd esim-cat```
 
 Run ```pip install -r requirements.txt```
 
-<h1>Usage</h1>
+<h3>Usage</h3>
 Write the APDUs you need, syntax:
 
 ```APDU:{number repeats}``` : It is what it is, called saved ```vars``` by calling [iccid1]; reference [here](https://github.com/porkboi/apduSIM/blob/main/clipboard.go)
@@ -57,6 +57,10 @@ Used to send illegal commands to eUICCs on esim, incurs an SW1/SW2 69 85 error. 
 <h3>Setup</h3>
 
 Hit the ```meson build```
+
+<h3>Usage</h3>
+
+Runs like normal lpac, refer to USAGE.md
 
 <h2>pcscRACK</h2>
 
