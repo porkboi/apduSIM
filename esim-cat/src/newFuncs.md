@@ -234,7 +234,7 @@ Form a consolidated data string:
 # Line 5: If Line 4 is more than 2 bytes, the length we look at is bytes -2, else it is bytes -1
 # Go to @SENDING_LOOP
 
-81e29100{2nd byte of the next block + 2}{computed number of bytes of data}  # Line 6 "a2 line (optional)"
+81e29100{2nd byte of the next block + 2}{computed number of bytes of data}  # Line 6 "a2 line (optional, if Line 4 is more than 2 bytes)"
 
 81e29100{number of bytes to the next "86"}{computed number of bytes of data}  # Line 7 "a3 line"
 ```
