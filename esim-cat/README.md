@@ -11,7 +11,7 @@ newFuncs are described first, then oldFuncs.
   - [list](#list)
   - [get_eid](#get_eid)
   - [delete_profile](#delete_profile)
-  - [Provisioning](#provisioning)
+  - [provision](#provision)
     - [@SENDING_LOOP](#sending_loop)
     - [@RECEIVING_LOOP](#receiving_loop)
     - [es10b: GetEuiccChallenge](#es10b-geteuiccchallenge)
