@@ -46,7 +46,6 @@ Class that provides a communication platform via Serial Port / ASCII Port.
 
 ---
 # `newFuncs`
----
 
 ## `list`
 
@@ -55,8 +54,6 @@ Class that provides a communication platform via Serial Port / ASCII Port.
   81e2910003bf2d00
   ```
 
----
-
 ## `get_eid`
 
 - **APDU**:  
@@ -64,16 +61,12 @@ Class that provides a communication platform via Serial Port / ASCII Port.
   81e2910006bf3e035c015a
   ```
 
----
-
 ## `delete_profile`
 
 - **APDU**:  
   ```
   81e291000fbf330c5a0a{ICCID_IN_LITTLE_ENDIAN}
   ```
-
----
 
 ## `Provisioning`
 
@@ -103,8 +96,6 @@ If response is `61xy`, send:
 81c00000xy
 ```
 
----
-
 ## `es10b: GetEuiccChallenge`
 
 - **APDUs**:
@@ -113,8 +104,6 @@ If response is `61xy`, send:
   81c0000015
   ```
 
----
-
 ## `es10b: GetEuiccInfo1`
 
 - **APDUs**:
@@ -122,8 +111,6 @@ If response is `61xy`, send:
   81e2910003bf2000
   81c0000038
   ```
-
----
 
 ## `es9p: InitiateAuthentication`
 
@@ -149,8 +136,6 @@ rx = {
 }
 ```
 
----
-
 ## `es10b: serverAuthenticate`
 
 Form a consolidated data string:
@@ -168,8 +153,6 @@ Then:
 
 - Go to `@SENDING_LOOP`
 - Go to `@RECEIVING_LOOP`
-
----
 
 ## `es9p: authenticateClient`
 
@@ -194,8 +177,6 @@ rx = {
 }
 ```
 
----
-
 ## `es10b: prepareDownoadResponse`
 
 Form a consolidated data string:
@@ -211,8 +192,6 @@ Then:
 
 - Go to `@SENDING_LOOP`
 - Go to `@RECEIVING_LOOP`
-
----
 
 ## `es9p: getBoundProfilePackage`
 
@@ -233,8 +212,6 @@ rx = {
     "boundProfilePackage" : ...
 }
 ```
-
----
 
 ## `es10b: loadBoundProfilePackage`
 
@@ -265,6 +242,6 @@ From here, files operate on a 9-cycle: the first 8 are 120 bytes long, and the l
 
 # `oldFuncs`
 
----
+
 
 
