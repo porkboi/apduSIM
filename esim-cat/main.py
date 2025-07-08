@@ -17,7 +17,6 @@ def main():
     print("You can alo use the pre-programmed APDUs: \n'list' \n'delete iccid=***' \n'provision ac=***' \n'get_eid'")
     print("'d' to enable debug mode")
     listOfCmds = []
-    config.command_buffer.extend(["bridge"])
     send_to_device_individually(config.command_buffer)
     config.command_buffer=[]
     new = SIMTransportLayer()
@@ -120,8 +119,6 @@ def main():
             else:
                 print("Fail")
 
-            
-
         elif user_input.startswith("parse="):
             config.parse_cmd = user_input[6:].upper()
             print(f"Set parse command to: {config.parse_cmd}")
@@ -130,7 +127,6 @@ def main():
             try:
                 hex_string, repeat = parse_input_line(user_input)
                 #apdu_command = format_apdu_command(hex_string)
-                config.command_buffer.extend(["bridge"])
                 listOfCmds.extend([hex_string]*repeat)
                 print(f"Buffered {repeat}x: {hex_string}")
             except ValueError as e:

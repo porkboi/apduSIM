@@ -1,4 +1,8 @@
+# Can be changed if need be
+
 DEVICE_PATH = "/dev/ttyACM0"
+
+# bridge -s is purposely not used as echos are handled
 
 INITIAL_COMMANDS = [
     "m\r\n4\r\ny",
@@ -6,8 +10,10 @@ INITIAL_COMMANDS = [
     "P",
     "G\r\n1\r\n3.57MHz\r\n50%",
     "binmode\r\n1\r\ny",
-    "P"
+    "P",
+    "bridge"
 ]
+
 
 DEBUG_MODE=False
 
