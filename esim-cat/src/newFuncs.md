@@ -124,10 +124,116 @@ bf3882034a
 + base64.b64decode(rx["serverSignature1"]).hex()
 + base64.b64decode(rx["euiccCiPKIdToBeUsed"]).hex()
 + base64.b64decode(rx["serverCertificate"]).hex()
-+ active
++ a0{length of activation code bytes + 12}80{length of activation code bytes}{activation code in hex}a108800435290611a100
 ```
 
 Then:
 
 - Go to `@SENDING_LOOP`
 - Go to `@RECEIVING_LOOP`
+
+---
+
+### `es9p: authenticateClient`
+
+Makes an HTTP `POST` request to the SMDP+ server with parameters:
+
+```python
+tx = {
+    "transactionId": ...,
+    "authenticateServerResponse": ...,
+}
+```
+
+Returns:
+
+```python
+rx = {
+    "transactionId" : ...,
+    "profileMetadata" : ...,
+    "smdpSigned2" : ...,
+    "smdpSignature2" : ...,
+    "smdpCertificate" : ...
+}
+```
+
+---
+
+### `es10b: prepareDownoadResponse`
+
+Form a consolidated data string:
+
+```python
+bf21820{lenth of data bytes}
++ base64.b64decode(rx["smdpSigned2"]).hex()
++ base64.b64decode(rx["serverSignature2"]).hex()
++ base64.b64decode(rx["smdpCertificate"]).hex()
+```
+
+Then:
+
+- Go to `@SENDING_LOOP`
+- Go to `@RECEIVING_LOOP`
+
+---
+
+### `es9p: getBoundProfilePackage`
+
+Makes an HTTP `POST` request to the SMDP+ server with parameters:
+
+```python
+tx = {
+    "transactionId": ...,
+    "prepareDownloadResponse": ...,
+}
+```
+
+Returns:
+
+```python
+rx = {
+    "transactionId" : ...,
+    "boundProfilePackage" : ...
+}
+```
+
+---
+
+### `es10b: loadBoundProfilePackage`
+
+Form a consolidated data string:
+
+Line 1: ```python
+81e2110078{first 120 bytes of data}
+```
+
+Line 2: ```python
+81e29101{length of 8th bytes - 111}{the computed number of bytes}
+```
+
+Line 3: "a0 line" ```python
+81e29100{2nd byte of the next block + 2}{computed number of bytes of data}
+```
+
+Line 4: "a1 line" ```python
+81e29100{number of bytes to the next "88"}{computed number of bytes of data}
+```
+
+Line 5: "If Line 4 is more than 2 bytes, the length we look at is bytes -2, else it is bytes -1" 
+- Go to `@SENDING_LOOP`
+
+Line 6: "a2 line : Optional, only if Line 4 > 2 bytes" ```python
+81e29100{2nd byte of the next block + 2}{computed number of bytes of data}
+```
+
+Line 7: "a3 line" ```python
+81e29100{number of bytes to the next "86"}{computed number of bytes of data}
+```
+
+From here files operate on a 9-cycle, the first 8 are 120bytes long, and the last will be 60 bytes long. Each represents an EF to write.
+- Go to `@SENDING_LOOP`
+
+Until the remaining bytes are less than 1020, then it just wraps up.
+- Go to `@SENDING_LOOP`
+
+---
