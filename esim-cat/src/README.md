@@ -68,7 +68,7 @@ Class that provides a communication platform via Serial Port / ASCII Port.
   81e291000fbf330c5a0a{ICCID_IN_LITTLE_ENDIAN}
   ```
 
-## `Provisioning`
+## `provision`
 
 This process is significantly more complicated; we will delve into the derivation of certain bytes and why they are so.
 
@@ -242,6 +242,14 @@ From here, files operate on a 9-cycle: the first 8 are 120 bytes long, and the l
 
 # `oldFuncs`
 
+## `format_apdu_commands`
 
+Morphs an APDu to a properly-formatted HDUART command.
+
+```python
+81c0000000 -> [0x81 0xc0 0x00 0x00 0x00
+```
+
+## `
 
 
