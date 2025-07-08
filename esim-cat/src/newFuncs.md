@@ -35,13 +35,13 @@ Makes a HTTP POST request to a SMDP+ server, using the parameters:
     }
 ```
 Returns:
-'''rx: {
+```rx: {
     "transactionId":,
     "serverSigned1":,
     "serverSignature1":,
     "euiccCiPKIdToBeUsed":,
     "serverCertificate":
-} '''
+} ```
 
 <h3>es10b: serverAuthenticate</h3>
 Form a consolidated data string of the form:
