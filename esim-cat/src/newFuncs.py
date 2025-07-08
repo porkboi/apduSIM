@@ -9,7 +9,6 @@ def longCommandToAPDUs (toSend : str):
     return [toSend[i:i+240] for i in range(0, len(toSend), 240)]
 
 def send(new : SIMTransportLayer, apdu : str):
-    apdu = '81e2910003bf2e00'
     t = bytearray.fromhex(apdu)
     sw, data = new.send_apdu(t)
     return sw, data
@@ -118,15 +117,7 @@ def provision (new : SIMTransportLayer, domain : str, activation : str):
                         },
                         json=tx, 
                         verify='certificate.pem')
-    '''rx: {
-        "transactionId":var3,
-        "serverSigned1":var4,
-        "serverSignature1":var5,
-        "euiccCiPKIdToBeUsed":var6,
-        "serverCertificate":var7
-    } '''
 
-    #print(rx_raw)
     rx = rx_raw.json()
     if DEBUG_MODE:
         print(rx)
@@ -143,34 +134,13 @@ def provision (new : SIMTransportLayer, domain : str, activation : str):
     
     listOfCommands = longCommandToAPDUs(toSend)
     for cmdNo in range(len(listOfCommands)-1):
-        apdu = f"81e2110{cmdNo}78{listOfCommands[cmdNo]}"
-        t = bytearray.fromhex(apdu)
-        sw, data = new.send_apdu(t)
-        #print(sw, apdu)
+        sw, data = send(new, f"81e2110{cmdNo}78{listOfCommands[cmdNo]}")
     pad = "" 
     if (len(listOfCommands[cmdNo+1])//2 < 16):
         pad = "0"
-    apdu = f'81e2910{cmdNo+1}{pad}{hex(len(listOfCommands[cmdNo+1])//2)[2:]}{listOfCommands[cmdNo+1]}'
-    #print(apdu)
-    t = bytearray.fromhex(apdu)
-    sw, data = new.send_apdu(t)
-    
-    apdu = '81c0000000'
-    t = bytearray.fromhex(apdu)
-    sw, data = new.send_apdu(t)
-    var8 = ""
-    while sw=="6100":
-        var8+=data
-        apdu = '81c0000000'
-        t = bytearray.fromhex(apdu)
-        sw, data = new.send_apdu(t)
-    var8+=data
-    apdu = f'81c00000{sw[-2:]}'
-    t = bytearray.fromhex(apdu)
-    sw, data = new.send_apdu(t)
-    #print(sw, data)
-    var8+=data
-    val = hex_to_base64(var8)
+    sw, data = send(new, f'81e2910{cmdNo+1}{pad}{hex(len(listOfCommands[cmdNo+1])//2)[2:]}{listOfCommands[cmdNo+1]}')
+    sw, data = print_res(new, sw, "", 0)
+    val = hex_to_base64(data)
 
     print("es9p: authenticateClient")
     tx = {
@@ -185,13 +155,6 @@ def provision (new : SIMTransportLayer, domain : str, activation : str):
                         },
                         json=tx, 
                         verify='certificate.pem')
-    '''rx: {
-        "transactionId" : var3,
-        "profileMetadata" : var9,
-        "smdpSigned2" : var10,
-        "smdpSignature2" : var11,
-        "smdpCertificate" : var12
-    } '''
     rx = rx_raw.json()
     if DEBUG_MODE:
         print(rx)
@@ -202,22 +165,13 @@ def provision (new : SIMTransportLayer, domain : str, activation : str):
                     }{base64.b64decode(rx["smdpCertificate"]).hex()}"
     toSend = f"bf21820{hex(len(vals)//2)[2:]}{vals}"
     listOfCommands = longCommandToAPDUs(toSend)
-    #print([len(i) for i in listOfCommands])
     for cmdNo in range(len(listOfCommands)-1):
-        apdu = f"81e2110{cmdNo}78{listOfCommands[cmdNo]}"
-        t = bytearray.fromhex(apdu)
-        sw, data = new.send_apdu(t)
+        sw, data = send(new, f"81e2110{cmdNo}78{listOfCommands[cmdNo]}")
     pad = "" 
     if (len(listOfCommands[cmdNo+1])//2 < 16):
         pad = "0"
-    apdu = f'81e2910{cmdNo+1}{pad}{hex(len(listOfCommands[cmdNo+1])//2)[2:]}{listOfCommands[cmdNo+1]}'
-    #print(apdu)
-    t = bytearray.fromhex(apdu)
-    sw, data = new.send_apdu(t)
-
-    apdu = f'81c00000{sw[2:]}'
-    t = bytearray.fromhex(apdu)
-    sw, data = new.send_apdu(t)
+    sw, data = send(new, f'81e2910{cmdNo+1}{pad}{hex(len(listOfCommands[cmdNo+1])//2)[2:]}{listOfCommands[cmdNo+1]}')
+    sw, data = send(new, f'81c00000{sw[2:]}')
     var13 = hex_to_base64(data)
 
     print("es9p: getBoundProfilePackage")
@@ -246,19 +200,11 @@ def provision (new : SIMTransportLayer, domain : str, activation : str):
         if cmdNo % 3 == 0 and not config.DEBUG_MODE:
             print("#", end="", flush=True)
         try:
-            apdu = listOfCommands[cmdNo]
-            t = bytearray.fromhex(apdu)
-            sw, data = new.send_apdu(t)
-            #print(apdu, flush=True)
-            #print(sw, flush=True)
+            sw, data = send(new, listOfCommands[cmdNo])
         except Exception as e:
             print("\n Error:" ,cmdNo, e)
             return
-    
-    print(sw)
-    apdu = f'81c00000{sw[2:]}'
-    t = bytearray.fromhex(apdu)
-    sw, data = new.send_apdu(t)
+    sw, data = send(new, f'81c00000{sw[2:]}')
     print("Ok: ", sw, data)
     
 
@@ -268,21 +214,15 @@ def print_res(new : SIMTransportLayer, sw : str, data1 : str, ctr : int):
     //@requires: valid sw string \n
     //@requires: valid data string (tail-recursive) \n
     //@requires: valid counter integer (tail-recursive)"""
-    #print(sw)
     if sw == "9000":
         return (ctr, data1)
     elif sw == "6100":
-        apdu = '81c0000000'
-        t = bytearray.fromhex(apdu)
-        sw, data = new.send_apdu(t)
+        sw, data = send(new, '81c0000000')
         data1 += data
         return print_res(new, sw, data1, ctr+1)
     elif sw.startswith("61"):
-        apdu = f'81c00000{sw[-2:]}'
-        t = bytearray.fromhex(apdu)
-        sw, data = new.send_apdu(t)
+        sw, data = send(new, f'81c00000{sw[-2:]}')
         data1 += data
-        #print(ctr, data1)
         return (ctr, data1)
     else:
         raise(f"Error - {sw}")
@@ -290,13 +230,9 @@ def print_res(new : SIMTransportLayer, sw : str, data1 : str, ctr : int):
 def list_profile(new):
     """Find all profiles in a given string by searching for tag '5a0a' \n
     //@requires: initialised SIMTransportLayer instance"""
-    apdu = '81e2910003bf2d00'
-    t = bytearray.fromhex(apdu)
-    sw, data = new.send_apdu(t)
+    sw, data = send(new, '81e2910003bf2d00')
 
     ctr, stri = print_res(new, sw, "", 0)
-
-    #print(stri)
 
     val = 0
     while val+4<len(stri):
@@ -308,10 +244,7 @@ def list_profile(new):
 def get_eid(new):
     """Finds the EID \n
     //@requires: initialised SIMTransportLayer instance"""
-    apdu = '81e2910006bf3e035c015a'
-    t = bytearray.fromhex(apdu)
-    sw, data = new.send_apdu(t)
-
+    sw, data = send(new, '81e2910006bf3e035c015a')
     (ctr, stri) = print_res(new, sw, data, 0)
     print("EID: ", stri[10:])
 
@@ -319,9 +252,6 @@ def delete_profile(new, iccid : str):
     """Deltes the specified profile and runs list afterwards \n
     //@requires: initialised SIMTransportLayer instance \n
     //@requires: valid iccid string in LITTLE ENDIAN"""
-    apdu = f'81e291000fbf330c5a0a{iccid}'
-    t = bytearray.fromhex(apdu)
-    sw, data = new.send_apdu(t)
-
+    sw, data = send(new, f'81e291000fbf330c5a0a{iccid}')
     ctr, stri = print_res(new, sw, data, 0)
     print("9000", stri)
