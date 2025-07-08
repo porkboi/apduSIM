@@ -6,10 +6,12 @@ The pre-programmed functions.
 Class that provides a communication platform via Serial Port/ ASCII Port
 
 <h2>list</h2>
-APDU: ```81e2910003bf2d00```
+APDU: 
+```81e2910003bf2d00```
 
 <h2>get_eid</h2>
-APDU: ```81e2910006bf3e035c015a```
+APDU: 
+```81e2910006bf3e035c015a```
 
 <h2>delete_profile</h2>
 APDU: ```81e291000fbf330c5a0a{ICCID_IN_LITTLE_ENDIAN}```
