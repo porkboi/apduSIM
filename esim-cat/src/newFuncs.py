@@ -4,9 +4,13 @@ from src.classes.SIMTransportLayer import *
 from config import *
 
 def longCommandToAPDUs (toSend : str):
+    """Divides a string into blocks of 240 characters to represent 120 bytes, final string may not be 120 bytes long. This is for data blocks only \n
+    //@requires: HEX characters in the input string"""
     return [toSend[i:i+240] for i in range(0, len(toSend), 240)]
 
 def lbpp(toSend : str):
+    """Parses the boundProfilePackage downloaded from es9p, returns a list of commands, complete with the CLA, INS, P1, P2, Lc \n
+    //@requires: HEX characters in the input string"""
     final = []
     strCount = 0
     for i in range(999):
@@ -80,6 +84,10 @@ def lbpp(toSend : str):
                             strCount+=240
 
 def provision (new : SIMTransportLayer, domain : str, activation : str):
+    """Outlines the provisioning process in SIM cards, (refer to newFuncs.md) \n
+    //@requires: initialised SIMTransportLayer instance \n
+    //@requires: valid domain string \n
+    //@requires: valid activation string (typically processed in all CAPS)"""
     print("es10b: GetEuiccChallenge")
     apdu = '81e2910003bf2e00'
     t = bytearray.fromhex(apdu)
@@ -259,6 +267,11 @@ def provision (new : SIMTransportLayer, domain : str, activation : str):
     
 
 def print_res(new : SIMTransportLayer, sw : str, data1 : str, ctr : int):
+    """Recursively handles output chaining , and returns the number of iterations, and the completed data \n
+    //@requires: initialised SIMTransportLayer instance \n
+    //@requires: valid sw string \n
+    //@requires: valid data string (tail-recursive) \n
+    //@requires: valid counter integer (tail-recursive)"""
     #print(sw)
     if sw == "9000":
         return (ctr, data1)
@@ -279,7 +292,8 @@ def print_res(new : SIMTransportLayer, sw : str, data1 : str, ctr : int):
         raise(f"Error - {sw}")
     
 def list_profile(new):
-
+    """Find all profiles in a given string by searching for tag '5a0a' \n
+    //@requires: initialised SIMTransportLayer instance"""
     apdu = '81e2910003bf2d00'
     t = bytearray.fromhex(apdu)
     sw, data = new.send_apdu(t)
@@ -296,6 +310,8 @@ def list_profile(new):
 
 
 def get_eid(new):
+    """Finds the EID \n
+    //@requires: initialised SIMTransportLayer instance"""
     apdu = '81e2910006bf3e035c015a'
     t = bytearray.fromhex(apdu)
     sw, data = new.send_apdu(t)
@@ -304,6 +320,9 @@ def get_eid(new):
     print("EID: ", stri[10:])
 
 def delete_profile(new, iccid : str):
+    """Deltes the specified profile and runs list afterwards \n
+    //@requires: initialised SIMTransportLayer instance \n
+    //@requires: valid iccid string in LITTLE ENDIAN"""
     apdu = f'81e291000fbf330c5a0a{iccid}'
     t = bytearray.fromhex(apdu)
     sw, data = new.send_apdu(t)
