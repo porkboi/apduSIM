@@ -14,6 +14,17 @@ Suite of Applications for eSIM exploration.
 
 Find and ensure the port connected to your Bus Pirate is the ASCII port ```/dev/ttyACMx``` where x can be checked by running ```lsusb```
 
+<h2> Changes to lpac and pcsc </h2>
+| Change Location | Exact change                                                                 | Rationale                                                        |
+|-----------------|------------------------------------------------------------------------------|------------------------------------------------------------------|
+| pcsc-lite       | Disable mutex in ifdwrapper.c                                                | Allow writing in between threads for MITM                        |
+|                 | Disable SCARD failures and force SCardReconnect without change detection in winscard.c | Bypass same eSIM verification locally                 |
+|                 | Force preferred dwords in PHSetProtocol in prothandler.c                     | This forces a protocol to be taken regardless of the SCARD status|
+| lpac            | es10b_load_bound_profile_package                                             | Ensure logical channel communication to eUICC is valid           |
+|                 | Close and reopened new logical channel                                       |                                                                  |
+|                 | Changing server to localhost for connections to fake SMDPs                   | Yes                                                              |
+
+
 <h2>eSIM-cat</h2>
 This software aims to allow users to send custom APDU commands over HDUART through a Bus Pirate to an eSIM card, while listening for responses. This is compabilitable with SGP.22/ ISO-7816 standards, and does not need a SmartCard Reader.
 
