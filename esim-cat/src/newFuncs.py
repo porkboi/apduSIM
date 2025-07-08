@@ -8,6 +8,12 @@ def longCommandToAPDUs (toSend : str):
     //@requires: HEX characters in the input string"""
     return [toSend[i:i+240] for i in range(0, len(toSend), 240)]
 
+def send(new : SIMTransportLayer, apdu : str):
+    apdu = '81e2910003bf2e00'
+    t = bytearray.fromhex(apdu)
+    sw, data = new.send_apdu(t)
+    return sw, data
+
 def lbpp(toSend : str):
     """Parses the boundProfilePackage downloaded from es9p, returns a list of commands, complete with the CLA, INS, P1, P2, Lc \n
     //@requires: HEX characters in the input string"""
@@ -89,23 +95,13 @@ def provision (new : SIMTransportLayer, domain : str, activation : str):
     //@requires: valid domain string \n
     //@requires: valid activation string (typically processed in all CAPS)"""
     print("es10b: GetEuiccChallenge")
-    apdu = '81e2910003bf2e00'
-    t = bytearray.fromhex(apdu)
-    sw, data = new.send_apdu(t)
-
-    apdu = '81c0000015'
-    t = bytearray.fromhex(apdu)
-    sw, data = new.send_apdu(t)
+    sw, data = send(new, '81e2910003bf2e00')
+    sw, data = send(new, '81c0000015')
     var1 = hex_to_base64(data[10:])
 
     print("es10b: GetEuiccInfo1")
-    apdu = '81e2910003bf2000'
-    t = bytearray.fromhex(apdu)
-    sw, data = new.send_apdu(t)
-
-    apdu = '81c0000038'
-    t = bytearray.fromhex(apdu)
-    sw, data = new.send_apdu(t)
+    sw, data = send(new, '81e2910003bf2000')
+    sw, data = send(new, '81c0000038')
     var2 = hex_to_base64(data)
 
     print("es9p: initiateAuthentication")
