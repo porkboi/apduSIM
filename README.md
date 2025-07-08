@@ -15,6 +15,7 @@ Suite of Applications for eSIM exploration.
 Find and ensure the port connected to your Bus Pirate is the ASCII port ```/dev/ttyACMx``` where x can be checked by running ```lsusb```
 
 <h2> Changes to lpac and pcsc </h2>
+
 | Change Location | Exact change                                                                 | Rationale                                                        |
 |-----------------|------------------------------------------------------------------------------|------------------------------------------------------------------|
 | pcsc-lite       | Disable mutex in ifdwrapper.c                                                | Allow writing in between threads for MITM                        |
