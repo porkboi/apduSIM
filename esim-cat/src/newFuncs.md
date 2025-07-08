@@ -28,14 +28,14 @@ APDU: ```81c0000038```
 <h3>es9p: InitiateAuthentication</h3>
 Makes a HTTP POST request to a SMDP+ server, using the parameters:
 
-```tx = {
+``` tx = {
         "smdpAddress":,
         "euiccChallenge":,
         "euiccInfo1":,
     }
 ```
 Returns:
-```rx: {
+``` rx: {
     "transactionId":,
     "serverSigned1":,
     "serverSignature1":,
@@ -45,11 +45,11 @@ Returns:
 
 <h3>es10b: serverAuthenticate</h3>
 Form a consolidated data string of the form:
-```bf3882034a{base64.b64decode(rx["serverSigned1"]).hex()
+``` bf3882034a{base64.b64decode(rx["serverSigned1"]).hex()
     }{base64.b64decode(rx["serverSignature1"]).hex()
       }{base64.b64decode(rx["euiccCiPKIdToBeUsed"]).hex()
         }{base64.b64decode(rx["serverCertificate"]).hex()
-          }{active}```
+          }{active} ```
 Send this in blocks of 120 bytes (0x78) of form ```81e211{x^th block}78{block of 120}``` until the last bloc, where you would use ```81e2910{x^th block}{len(block)}{block of yy bytes}```
 
 
