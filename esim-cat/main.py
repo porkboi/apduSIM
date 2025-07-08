@@ -70,6 +70,8 @@ def main():
             #break
 
         elif user_input == "run":
+            config.command_buffer.append("bridge")
+            send_to_device_individually(config.command_buffer)
             new = SIMTransportLayer()
             for cmdNo in range(len(listOfCmds)):
                 try:
@@ -87,12 +89,18 @@ def main():
             break
         
         elif user_input == "list":
+            config.command_buffer.append("bridge")
+            send_to_device_individually(config.command_buffer)
             list_profile(new)
 
         elif user_input == "get_eid":
+            config.command_buffer.append("bridge")
+            send_to_device_individually(config.command_buffer)
             get_eid(new)
         
         elif user_input.startswith("delete"):
+            config.command_buffer.append("bridge")
+            send_to_device_individually(config.command_buffer)
             match = re.search(r'iccid=([0-9A-Za-z]+)', user_input)
             if match:
                 iccid = match.group(1)
@@ -107,6 +115,8 @@ def main():
             print("Buffered special 'ar' command.")
         
         elif user_input.startswith("provision"):
+            config.command_buffer.append("bridge")
+            send_to_device_individually(config.command_buffer)
             match = re.search(r'\$(.*?)\$', user_input)
             if match:
                 domain = match.group(1)
