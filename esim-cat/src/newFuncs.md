@@ -6,17 +6,22 @@ The pre-programmed functions.
 Class that provides a communication platform via Serial Port/ ASCII Port
 
 <h2>list</h2>
-APDU: ``` 81e2910003bf2d00 ```
+APDU: ```81e2910003bf2d00```
 
 <h2>get_eid</h2>
-APDU: 
-```81e2910006bf3e035c015a```
+APDU: ```81e2910006bf3e035c015a```
 
 <h2>delete_profile</h2>
 APDU: ```81e291000fbf330c5a0a{ICCID_IN_LITTLE_ENDIAN}```
 
 <h2>Provisioning</h2>
 This process is significantly more complicated, we will delve into the derivation of certin bytes and why they are so.
+
+@SENDING_LOOP
+Send this in blocks of 120 bytes (0x78) of form ```81e211{x^th block}78{block of 120}``` until the last bloc, where you would use ```81e2910{x^th block}{len(block)}{block of yy bytes}```
+
+@RECEIVING_LOOP
+Receive the output bytes by sending ```81c0000000``` until ``61xy`` is returned, then run ```81c00000xy```
 
 <h3>es10b: GetEuiccChallenge</h3>
 APDU: ```81e2910003bf2e00```
@@ -33,8 +38,8 @@ Makes a HTTP POST request to a SMDP+ server, using the parameters:
         "smdpAddress":,
         "euiccChallenge":,
         "euiccInfo1":,
-    }
-```
+    } ```
+
 Returns:
 ``` rx: {
     "transactionId":,
@@ -51,7 +56,10 @@ Form a consolidated data string of the form:
       }{base64.b64decode(rx["euiccCiPKIdToBeUsed"]).hex()
         }{base64.b64decode(rx["serverCertificate"]).hex()
           }{active} ```
-Send this in blocks of 120 bytes (0x78) of form ```81e211{x^th block}78{block of 120}``` until the last bloc, where you would use ```81e2910{x^th block}{len(block)}{block of yy bytes}```
+
+goto SENDING_LOOP
+goto RECEIVING_LOOP
+
 
 
 
