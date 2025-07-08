@@ -14,8 +14,6 @@ Suite of Applications for eSIM exploration.
 
 Find and ensure the port connected to your Bus Pirate is the ASCII port ```/dev/ttyACMx``` where x can be checked by running ```lsusb```
 
-Run the following
-
 <h2>eSIM-cat</h2>
 This software aims to allow users to send custom APDU commands over HDUART through a Bus Pirate to an eSIM card, while listening for responses. This is compabilitable with SGP.22/ ISO-7816 standards, and does not need a SmartCard Reader.
 
