@@ -1,33 +1,51 @@
-# `newFuncs`
+# `Usage Guide`
 
-The pre-programmed functions.
+newFuncs are described first, then oldFuncs.
 
 ---
 
 ## Contents
 
 - [SIMTransportLayer](#simtransportlayer)
-- [list](#list)
-- [get_eid](#get_eid)
-- [delete_profile](#delete_profile)
-- [Provisioning](#provisioning)
-  - [@SENDING_LOOP](#sending_loop)
-  - [@RECEIVING_LOOP](#receiving_loop)
-  - [es10b: GetEuiccChallenge](#es10b-geteuiccchallenge)
-  - [es10b: GetEuiccInfo1](#es10b-geteuiccinfo1)
-  - [es9p: InitiateAuthentication](#es9p-initiateauthentication)
-  - [es10b: serverAuthenticate](#es10b-serverauthenticate)
-  - [es9p: authenticateClient](#es9p-authenticateclient)
-  - [es10b: prepareDownoadResponse](#es10b-preparedownoadresponse)
-  - [es9p: getBoundProfilePackage](#es9p-getboundprofilepackage)
-  - [es10b: loadBoundProfilePackage](#es10b-loadboundprofilepackage)
+- [newFuncs](#newfuncs)
+  - [list](#list)
+  - [get_eid](#get_eid)
+  - [delete_profile](#delete_profile)
+  - [Provisioning](#provisioning)
+    - [@SENDING_LOOP](#sending_loop)
+    - [@RECEIVING_LOOP](#receiving_loop)
+    - [es10b: GetEuiccChallenge](#es10b-geteuiccchallenge)
+    - [es10b: GetEuiccInfo1](#es10b-geteuiccinfo1)
+    - [es9p: InitiateAuthentication](#es9p-initiateauthentication)
+    - [es10b: serverAuthenticate](#es10b-serverauthenticate)
+    - [es9p: authenticateClient](#es9p-authenticateclient)
+    - [es10b: prepareDownoadResponse](#es10b-preparedownoadresponse)
+    - [es9p: getBoundProfilePackage](#es9p-getboundprofilepackage)
+    - [es10b: loadBoundProfilePackage](#es10b-loadboundprofilepackage)
+- [oldFuncs](#oldFuncs)
 
 ---
 
-## `SIMTransportLayer`
+# `SIMTransportLayer`
 
 Class that provides a communication platform via Serial Port / ASCII Port.
 
+**Initialisation**
+- Opens HDUART port on DEVICE_PATH
+- Initiates an ATR request:
+  ```python
+  self._rst_pin = "-rst"
+  rst_meth=self.ser.setRTS
+  rst_meth(1)
+  time.sleep(0.1)
+  self.ser.flushInput()
+  rst_meth(0)
+  self.ser.read(64)
+  ```
+- Opens a logical channel (usually 1), so all CLA are written as 80 | 01 => 81
+
+---
+# `newFuncs`
 ---
 
 ## `list`
@@ -242,3 +260,11 @@ Form a consolidated data string:
 From here, files operate on a 9-cycle: the first 8 are 120 bytes long, and the last is 60 bytes long. Each represents an EF to write.
 
 - Go to `@SENDING_LOOP` until remaining bytes are < 1020, then wrap up.
+
+---
+
+# `oldFuncs`
+
+---
+
+
