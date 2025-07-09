@@ -16,12 +16,14 @@ def main():
     print("Initial commands added. \nEnter APDU commands (hex or hex:{n}) \n'parse=**' which could be GET.EID \n'ar' to auto-respond \n'runOld' to send \n'exit' to quit.")
     print("You can alo use the pre-programmed APDUs: \n'list' \n'delete iccid=***' \n'provision ac=***' \n'get_eid'")
     print("'d' to enable debug mode")
+    config.command_buffer.append("bridge")
     listOfCmds = []
     send_to_device_individually(config.command_buffer)
     config.command_buffer=[]
     new = SIMTransportLayer()
+    pre = "> "
     while True:
-        user_input = input("> ").strip().lower()
+        user_input = input(pre).strip().lower()
         
         if user_input == "d":
             config.DEBUG_MODE = True
@@ -70,9 +72,6 @@ def main():
             #break
 
         elif user_input == "run":
-            config.command_buffer.append("bridge")
-            send_to_device_individually(config.command_buffer)
-            new = SIMTransportLayer()
             for cmdNo in range(len(listOfCmds)):
                 try:
                     apdu = listOfCmds[cmdNo]
@@ -89,18 +88,12 @@ def main():
             break
         
         elif user_input == "list":
-            config.command_buffer.append("bridge")
-            send_to_device_individually(config.command_buffer)
             list_profile(new)
 
         elif user_input == "get_eid":
-            config.command_buffer.append("bridge")
-            send_to_device_individually(config.command_buffer)
             get_eid(new)
         
         elif user_input.startswith("delete"):
-            config.command_buffer.append("bridge")
-            send_to_device_individually(config.command_buffer)
             match = re.search(r'iccid=([0-9A-Za-z]+)', user_input)
             if match:
                 iccid = match.group(1)
@@ -108,15 +101,69 @@ def main():
                 print("Left:")
                 list_profile(new)
             else:
-                print("iccid missing")
+                print("iccid missing. Hint: include iccid=")
+        
+        elif user_input.startswith("enable"):
+            match = re.search(r'iccid=([0-9A-Za-z]+)', user_input)
+            if match:
+                iccid = match.group(1)
+                enable_profile(new, iccid)
+                print(f"Active: {iccid}, Disabled Previous")
+            else:
+                print("iccid missing. Hint: include iccid=")
+        
+        elif user_input.startswith("disable"):
+            match = re.search(r'iccid=([0-9A-Za-z]+)', user_input)
+            if match:
+                iccid = match.group(1)
+                enable_profile(new, iccid)
+                print(f"Disabled: {iccid}")
+            else:
+                print("iccid missing. Hint: include iccid=")
 
+        elif user_input == "r":
+            scan(new)
+        
+        elif user_input.startswith("select"):
+            match pre:
+                case "> ":
+                    match = re.search(r'aid=([0-9A-Za-z]+)', user_input)
+                    if match:
+                        aid = match.group(1)
+                        select_f(new, aid)
+                        match aid:
+                            case "a0000005591010ffffffff8900000100":
+                                pre = "> (ADF.ISD-R) "
+                            case "a0000000871002ffffffff8903050001":
+                                pre = "> (ADF.USIM) "
+                    else:
+                        print("AID missing. Hint: include aid=")
+                case "> (ADF.ISD-R) ":
+                    match = re.search(r'method=([0-9A-Za-z]+)', user_input)
+                    if match:
+                        method = match.group(1)
+                        print(method)
+                        match method:
+                            # If the bfyy00 yy > 30, there will be undefined behaviour
+                            case "listnotifs":
+                                sw, data = send(new, "81e2910003bf2800")
+                                print_res(new, sw, data, 0)
+                            case "geteim":
+                                sw, data = send(new, "81e2910003bf5500")
+                                print_res(new, sw, data, 0)
+                            case "getcerts":
+                                sw, data = send(new, "81e2910003bf5600")
+                                print_res(new, sw, data, 0)
+                            case _:
+                                print("You can use: listnotifs, geteim, getcerts")
+                    else:
+                        print("Method missing. Hint: include method=")
+        
         elif user_input == "ar":
             config.command_buffer.append("ar")
             print("Buffered special 'ar' command.")
         
         elif user_input.startswith("provision"):
-            config.command_buffer.append("bridge")
-            send_to_device_individually(config.command_buffer)
             match = re.search(r'\$(.*?)\$', user_input)
             if match:
                 domain = match.group(1)
@@ -125,9 +172,9 @@ def main():
                     activation = match2.group(1).upper()
                     provision(new, domain, activation)
                 else:
-                    print("Fail")
+                    print("Poorly formed activation code.")
             else:
-                print("Fail")
+                print("No activation code, Hint: include ac=")
 
         elif user_input.startswith("parse="):
             config.parse_cmd = user_input[6:].upper()
@@ -136,7 +183,6 @@ def main():
         else:
             try:
                 hex_string, repeat = parse_input_line(user_input)
-                #apdu_command = format_apdu_command(hex_string)
                 listOfCmds.extend([hex_string]*repeat)
                 print(f"Buffered {repeat}x: {hex_string}")
             except ValueError as e:

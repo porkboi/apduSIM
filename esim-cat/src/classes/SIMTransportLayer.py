@@ -33,14 +33,6 @@ class SIMTransportLayer():
         apdu = '0070000001'
         t = bytearray.fromhex(apdu)
         sw, data = self.send_apdu(t)
-
-        apdu = '01a404000fa0000005591010ffffffff89000001'
-        t = bytearray.fromhex(apdu)
-        sw, data = self.send_apdu(t)
-
-        apdu = '01c0000021'
-        t = bytearray.fromhex(apdu)
-        sw, data = self.send_apdu(t)
     
     def tx(self, b : bytearray):
         #print(b)
@@ -69,7 +61,7 @@ class SIMTransportLayer():
                 sw2 = self.rx()
                 nil = self.rx()
                 if sw2 and not nil:
-                    print(sw1, sw2)
+                    print("RX: ", b2h(sw1).upper(), b2h(sw2).upper())
                     return
                 print("Error")
         if len(b1) > 5:

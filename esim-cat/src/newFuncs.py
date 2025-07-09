@@ -13,6 +13,10 @@ def send(new : SIMTransportLayer, apdu : str):
     sw, data = new.send_apdu(t)
     return sw, data
 
+def init_isdr(new):
+    send(new, '01a404000fa0000005591010ffffffff89000001')
+    send(new, '01c0000021')
+
 def lbpp(toSend : str):
     """Parses the boundProfilePackage downloaded from es9p, returns a list of commands, complete with the CLA, INS, P1, P2, Lc \n
     //@requires: HEX characters in the input string"""
@@ -93,6 +97,7 @@ def provision (new : SIMTransportLayer, domain : str, activation : str):
     //@requires: initialised SIMTransportLayer instance \n
     //@requires: valid domain string \n
     //@requires: valid activation string (typically processed in all CAPS)"""
+    init_isdr(new)
     print("es10b: GetEuiccChallenge")
     sw, data = send(new, '81e2910003bf2e00')
     sw, data = send(new, '81c0000015')
@@ -230,6 +235,7 @@ def print_res(new : SIMTransportLayer, sw : str, data1 : str, ctr : int):
 def list_profile(new):
     """Find all profiles in a given string by searching for tag '5a0a' \n
     //@requires: initialised SIMTransportLayer instance"""
+    init_isdr(new)
     sw, data = send(new, '81e2910003bf2d00')
 
     ctr, stri = print_res(new, sw, "", 0)
@@ -241,17 +247,56 @@ def list_profile(new):
         val+=2
 
 
+def scan(new):
+    sw, data = send(new, f'00a40004022f00')
+    sw, data = send(new, f'00c000001c')
+    sw, data = send(new, f'00b2010426')
+    ctr = 0
+    while data[ctr:ctr+4] != "4f10":
+        ctr+=2
+    ctr+=4
+    print("ADF.USIM: ", data[ctr:ctr+32])
+    sw, data = send(new, '01a4040010a0000005591010ffffffff8900000100')
+    sw, data = send(new, '01c0000021')
+    if sw == "9000":
+        print("ADF.ISDR: a0000005591010ffffffff8900000100")
+    sw, data = send(new, '01a4040409a00000015141434c00')
+    if sw == "9000":
+        print("ARA-M: a00000015141434c00")
+
+def select_f(new, aid):
+    sw, data = send(new, f'01a40400{hex(len(aid)//2)[2:]}{aid}')
+    print_res(new, sw, data, 0)
+
 def get_eid(new):
     """Finds the EID \n
     //@requires: initialised SIMTransportLayer instance"""
+    init_isdr(new)
     sw, data = send(new, '81e2910006bf3e035c015a')
     (ctr, stri) = print_res(new, sw, data, 0)
     print("EID: ", stri[10:])
 
 def delete_profile(new, iccid : str):
-    """Deltes the specified profile and runs list afterwards \n
+    """Deletes the specified profile and runs list afterwards \n
     //@requires: initialised SIMTransportLayer instance \n
     //@requires: valid iccid string in LITTLE ENDIAN"""
+    init_isdr(new)
     sw, data = send(new, f'81e291000fbf330c5a0a{iccid}')
     ctr, stri = print_res(new, sw, data, 0)
     print("9000", stri)
+
+def disable_profile(new, iccid : str):
+    """Disables the specified profile \n
+    //@requires: initialised SIMTransportLayer instance \n
+    //@requires: valid iccid string in LITTLE ENDIAN"""
+    init_isdr(new)
+    sw, data = send(new, f'81e2910014bf3211a00c5a0a{iccid}810100')
+    ctr, stri = print_res(new, sw, data, 0)
+
+def enable_profile(new, iccid : str):
+    """Enables the specified profile \n
+    //@requires: initialised SIMTransportLayer instance \n
+    //@requires: valid iccid string in LITTLE ENDIAN"""
+    init_isdr(new)
+    sw, data = send(new, f'81e2910014bf3111a00c5a0a{iccid}810100')
+    ctr, stri = print_res(new, sw, data, 0)

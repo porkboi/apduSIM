@@ -4,6 +4,10 @@ import os
 import fcntl
 import json
 import config
+import time
+import threading
+import sys
+import itertools
 
 response_full = config.response_full
 
@@ -46,7 +50,20 @@ def send_to_device_individually(commands, long=False, xxd=False):
 
     with open("dict.json", "r") as f:
         d = json.load(f)
+    
+    done = False
 
+    def animate():
+        for c in itertools.cycle(['|', '/', '-', '\\']):
+            if done:
+                break
+            sys.stdout.write('\r Loading ' + c)
+            sys.stdout.flush()
+            time.sleep(0.1)
+        sys.stdout.write("\nInitialised!\n")
+
+    loadThread = threading.Thread(target=animate)
+    loadThread.start()
     for cmd in commands:
         # If the command is the special "ar", resolve it dynamically
         if cmd == "ar":
@@ -83,6 +100,7 @@ def send_to_device_individually(commands, long=False, xxd=False):
             # Read and accumulate response
             st = read_all_from_device()
             response_full += st
+    done = True
 
 
 def print_after_last_gt(s):

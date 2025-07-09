@@ -1,6 +1,6 @@
 # Can be changed if need be
 
-DEVICE_PATH = "/dev/ttyACM0"
+DEVICE_PATH = "/dev/ttyACM1"
 
 # bridge -s is purposely not used as echos are handled
 
