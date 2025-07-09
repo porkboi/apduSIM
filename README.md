@@ -2,6 +2,8 @@
 
 Suite of Applications for eSIM exploration.
 
+Credit to the lpac and pcsc project.
+
 <h1>Requirements</h1>
 
 - Ubuntu 24.04.2 LTS
