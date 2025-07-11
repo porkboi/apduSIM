@@ -68,7 +68,7 @@ Used to send illegal commands to eUICCs on esim, incurs an SW1/SW2 69 85 error. 
 
 <h3>Setup</h3>
 
-Hit the ```meson build```
+Hit the ```cmake```
 
 <h3>Usage</h3>
 
