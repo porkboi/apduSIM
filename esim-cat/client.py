@@ -1,21 +1,80 @@
 import re
 import json
+import asyncio
+import threading
+import socket
+import websockets
 from src.oldFuncs import *
 from src.newFuncs import *
 import config
+import sys
 
+websock = set()
+
+class WSStdoutRedirector:
+    def __init__(self, terminal=sys.__stdout__):
+        self.terminal = terminal
+        self.buffer = ""
+    
+    def write(self, message):
+        self.terminal.write(message)
+        self.buffer += message
+    
+    def flush(self):
+        self.terminal.flush()
+
+    def flush_output(self):
+        if self.buffer:
+            for wb in websock.copy():
+                try:
+                    
+                    asyncio.run_coroutine_threadsafe(wb.send(self.buffer), config.event_loop)
+                except Exception:
+                    websock.discard(wb)
+            self.buffer=""
+
+# WebSocket command queue
+
+def find_free_port():
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(("", 0))
+        return s.getsockname()[1]
+
+# WebSocket handler
+async def ws_handler(websocket):
+    try:
+        websock.add(websocket)
+        async for message in websocket:
+            print(f"[WebSocket] Received: {message}")
+            config.ws_command_queue.put(message)
+            #await websocket.send(f"Command '{message}' received.")
+    except websockets.exceptions.ConnectionClosed:
+        print("[WebSocket] Client disconnected.")
+        websock.discard(websocket)
+
+# WebSocket server loop
+async def ws_server():
+    val = find_free_port()
+    print(val)
+    config.PORT = val
+    async with websockets.serve(ws_handler, "0.0.0.0", val):
+        await asyncio.Future()  # Run forever
+
+def open_port():
+    config.event_loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(config.event_loop)
+    config.event_loop.run_until_complete(ws_server())
+    config.event_loop.run_forever()
+
+# Load empty JSON if not existing
 with open("dict.json", "w") as f:
     json.dump({}, f, indent=2)
-
 with open("dict.json", "r") as f:
     d = json.load(f)
 
-# DEBUG MODE is disabled by default
-def main():  
+def main():
     config.command_buffer = [f"{cmd}" for cmd in INITIAL_COMMANDS]
-    print("Initial commands added. \nEnter APDU commands (hex or hex:{n}) \n'parse=**' which could be GET.EID \n'ar' to auto-respond \n'runOld' to send \n'exit' to quit.")
-    print("You can alo use the pre-programmed APDUs: \n'list' \n'delete iccid=***' \n'provision ac=***' \n'get_eid'")
-    print("'d' to enable debug mode")
+    print("Initial commands added. Enter APDU commands or use WebSocket")
     config.command_buffer.append("bridge")
     listOfCmds = []
     send_to_device_individually(config.command_buffer)
@@ -23,25 +82,33 @@ def main():
     new = SIMTransportLayer()
     pre = "> "
     while True:
-        user_input = input(pre).strip().lower()
-        
+        user_input = ""
+        if config.SERVER:
+            if not config.ws_command_queue.empty():
+                user_input = config.ws_command_queue.get()
+                print(f"[WebSocket Command] >> {user_input}")
+                sys.stdout = WSStdoutRedirector()
+            else:
+                continue
+        else:
+            user_input = input(pre).strip().lower()
+            sys.stdout = sys.__stdout__
+
         if user_input == "d":
             config.DEBUG_MODE = True
         elif user_input == "runOld":
             print(f"\nSending each command to {config.DEVICE_PATH}...\n")
             send_to_device_individually(config.command_buffer)
             print("Reading response from device...")
-            #response = print_after_last_gt(read_all_from_device())
             if config.parse_cmd == "GET.EID":
                 try:
                     sol = print_after_last_gt(response_full)
                     new_sol = sol[33:-10]
-                    lst = new_sol.split(" 0x")          
-                    print(f"EID: {"".join(lst)}")
+                    lst = new_sol.split(" 0x")
+                    print(f"EID:{"".join(lst)}")
                 except Exception as e:
                     print(f"Error parsing GET.EID: {e}")
             elif config.parse_cmd == "GET.ICCID":
-                #counter = 1
                 try:
                     sol = print_after_last_gt(response_full).split(" 0x")[13:23]
                     new_sol = [s[::-1] for s in sol]
@@ -58,7 +125,7 @@ def main():
                         print(f"ICCID 2: {val2}")
                         if val2.isnumeric():
                             user_input2 = input("Save this as iccid2? Y/n > ").strip().lower()
-                            if user_input2 == "Y":
+                            if user_input2 == "y":
                                 add_to_json("iccid2", val2)
                     except Exception as e:
                         print(f"Error parsing ICCID 2: {e}")
@@ -69,7 +136,6 @@ def main():
                 print(f"Device Response: {print_after_last_gt(response_full)}")
             config.command_buffer = []
             config.parse_cmd = ""
-            #break
 
         elif user_input == "run":
             for cmdNo in range(len(listOfCmds)):
@@ -82,17 +148,20 @@ def main():
                     print(cmdNo)
                     break
 
-
         elif user_input == "exit":
             print("Exiting without sending.")
             break
-        
+
         elif user_input == "list":
             list_profile(new)
+            sys.stdout.flush()
+            sys.stdout.flush_output()
 
         elif user_input == "get_eid":
             get_eid(new)
-        
+            sys.stdout.flush()
+            sys.stdout.flush_output()
+
         elif user_input.startswith("delete"):
             match = re.search(r'iccid=([0-9A-Za-z]+)', user_input)
             if match:
@@ -102,7 +171,7 @@ def main():
                 list_profile(new)
             else:
                 print("iccid missing. Hint: include iccid=")
-        
+
         elif user_input.startswith("enable"):
             match = re.search(r'iccid=([0-9A-Za-z]+)', user_input)
             if match:
@@ -111,19 +180,19 @@ def main():
                 print(f"Active: {iccid}, Disabled Previous")
             else:
                 print("iccid missing. Hint: include iccid=")
-        
+
         elif user_input.startswith("disable"):
             match = re.search(r'iccid=([0-9A-Za-z]+)', user_input)
             if match:
                 iccid = match.group(1)
-                enable_profile(new, iccid)
+                disable_profile(new, iccid)
                 print(f"Disabled: {iccid}")
             else:
                 print("iccid missing. Hint: include iccid=")
 
         elif user_input == "r":
             scan(new)
-        
+
         elif user_input.startswith("select"):
             match pre:
                 case "> ":
@@ -136,6 +205,8 @@ def main():
                                 pre = "> (ADF.ISD-R) "
                             case "a0000000871002ffffffff8903050001":
                                 pre = "> (ADF.USIM) "
+                            case "a0000005591010ffffffff8900000200":
+                                pre = "> (ADF.ECASD) "
                     else:
                         print("AID missing. Hint: include aid=")
                 case "> (ADF.ISD-R) ":
@@ -144,7 +215,6 @@ def main():
                         method = match.group(1)
                         print(method)
                         match method:
-                            # If the bfyy00 yy > 30, there will be undefined behaviour
                             case "listnotifs":
                                 sw, data = send(new, "81e2910003bf2800")
                                 print_res(new, sw, data, 0)
@@ -158,11 +228,11 @@ def main():
                                 print("You can use: listnotifs, geteim, getcerts")
                     else:
                         print("Method missing. Hint: include method=")
-        
+
         elif user_input == "ar":
             config.command_buffer.append("ar")
             print("Buffered special 'ar' command.")
-        
+
         elif user_input.startswith("provision"):
             match = re.search(r'\$(.*?)\$', user_input)
             if match:
@@ -180,6 +250,8 @@ def main():
             config.parse_cmd = user_input[6:].upper()
             print(f"Set parse command to: {config.parse_cmd}")
 
+        elif user_input == "":
+            continue
         else:
             try:
                 hex_string, repeat = parse_input_line(user_input)
@@ -189,4 +261,8 @@ def main():
                 print(f"Error: {e}")
 
 if __name__ == "__main__":
+    print("Starting WebSocket Server...")
+    threading.Thread(target=open_port, daemon=True).start()
+    time.sleep(1)
+    #threading.Thread(target=runApp, daemon=True).start()
     main()

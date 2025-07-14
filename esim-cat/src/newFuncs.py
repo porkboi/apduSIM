@@ -230,7 +230,7 @@ def print_res(new : SIMTransportLayer, sw : str, data1 : str, ctr : int):
         data1 += data
         return (ctr, data1)
     else:
-        raise(f"Error - {sw}")
+        print(f"Error - {sw}")
     
 def list_profile(new):
     """Find all profiles in a given string by searching for tag '5a0a' \n
@@ -263,6 +263,19 @@ def scan(new):
     sw, data = send(new, '01a4040409a00000015141434c00')
     if sw == "9000":
         print("ARA-M: a00000015141434c00")
+    sw, data = send(new, '01a4040010a0000005591010ffffffff8900000200')
+    print_res(new, sw, data, 0)
+    if sw == "9000":
+        print("ADF.ECASD: a0000005591010ffffffff8900000200")
+    sw, data = send(new, '01a4040010a0000005591010ffffffff8900000D00')
+    print_res(new, sw, data, 0)
+    if sw == "9000":
+        print("ADF.ISD-P Load: a0000005591010ffffffff8900000D00")
+    sw, data = send(new, '01a4040010a0000005591010ffffffff8900000E00')
+    print_res(new, sw, data, 0)
+    if sw == "9000":
+        print("ADF.ISD-P Module: a0000005591010ffffffff8900000E00")
+    
 
 def select_f(new, aid):
     sw, data = send(new, f'01a40400{hex(len(aid)//2)[2:]}{aid}')
@@ -274,7 +287,7 @@ def get_eid(new):
     init_isdr(new)
     sw, data = send(new, '81e2910006bf3e035c015a')
     (ctr, stri) = print_res(new, sw, data, 0)
-    print("EID: ", stri[10:])
+    print("EID:", stri[10:])
 
 def delete_profile(new, iccid : str):
     """Deletes the specified profile and runs list afterwards \n

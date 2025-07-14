@@ -1,6 +1,16 @@
+from queue import Queue
+
 # Can be changed if need be
 
-DEVICE_PATH = "/dev/ttyACM1"
+SERVER = True
+
+event_loop = None
+
+websock = set()
+
+DEVICE_PATH = "/dev/ttyACM0"
+
+ws_command_queue = Queue()
 
 # bridge -s is purposely not used as echos are handled
 
@@ -13,6 +23,7 @@ INITIAL_COMMANDS = [
     "P"
 ]
 
+PORT = 54287
 
 DEBUG_MODE=False
 
