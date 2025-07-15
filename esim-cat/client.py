@@ -8,6 +8,7 @@ from src.oldFuncs import *
 from src.newFuncs import *
 import config
 import sys
+import requests
 
 websock = set()
 
@@ -54,10 +55,7 @@ async def ws_handler(websocket):
 
 # WebSocket server loop
 async def ws_server():
-    val = find_free_port()
-    print(val)
-    config.PORT = val
-    async with websockets.serve(ws_handler, "0.0.0.0", val):
+    async with websockets.serve(ws_handler, "0.0.0.0", config.PORT):
         await asyncio.Future()  # Run forever
 
 def open_port():
@@ -71,6 +69,13 @@ with open("dict.json", "w") as f:
     json.dump({}, f, indent=2)
 with open("dict.json", "r") as f:
     d = json.load(f)
+
+def get_dynamic_port():
+    try:
+        response = requests.get("http://localhost:8000/get-port")
+        return response.json()["port"]
+    except Exception:
+        raise ValueError
 
 def main():
     config.command_buffer = [f"{cmd}" for cmd in INITIAL_COMMANDS]
@@ -192,6 +197,8 @@ def main():
 
         elif user_input == "r":
             scan(new)
+            sys.stdout.flush()
+            sys.stdout.flush_output()
 
         elif user_input.startswith("select"):
             match pre:
@@ -261,7 +268,9 @@ def main():
                 print(f"Error: {e}")
 
 if __name__ == "__main__":
-    print("Starting WebSocket Server...")
+    print("Finding Server...")
+    config.PORT = get_dynamic_port()
+
     threading.Thread(target=open_port, daemon=True).start()
     time.sleep(1)
     #threading.Thread(target=runApp, daemon=True).start()

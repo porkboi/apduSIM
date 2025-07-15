@@ -11,14 +11,13 @@ python3 shell.py
 
 For server-client, run
 ```shell
+python3 entry.py
+```
+Then run:
+```shell
 python3 client.py
 ```
-The PORT will be printed and update config.py, then run:
-```shell
-python3 server.py
-```
-
-TODO: Common entrace point and server tells client which port to use.
+TODO: COnvert to Golang code
 
 ---
 

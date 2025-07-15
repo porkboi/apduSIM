@@ -1,11 +1,11 @@
 import asyncio
 import tkinter as tk
 from tkinter import ttk, scrolledtext
-import json
 import websockets
-import socket
 import threading
-import config
+import sys
+
+PORT = int(sys.argv[1])
 
 class WebSocketClient:
     def __init__(self, uri):
@@ -67,8 +67,8 @@ class App(tk.Tk):
         print(f"[Console] Received: {response}")
 
 if __name__ == "__main__":
-    print("Port: ", config.PORT)
-    WS_SERVER = f"ws://localhost:{config.PORT}"
+    print("Port: ", PORT)
+    WS_SERVER = f"ws://localhost:{PORT}"
     client = WebSocketClient(WS_SERVER)
     app = App(client)
     app.mainloop()

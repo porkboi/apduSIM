@@ -27,7 +27,7 @@ def main():
         
         if user_input == "d":
             config.DEBUG_MODE = True
-        elif user_input == "runOld":
+        elif user_input == "runold":
             print(f"\nSending each command to {config.DEVICE_PATH}...\n")
             send_to_device_individually(config.command_buffer)
             print("Reading response from device...")
