@@ -4,8 +4,36 @@ from tkinter import ttk, scrolledtext
 import websockets
 import threading
 import sys
+import config
 
+websock = set()
 PORT = int(sys.argv[1])
+
+# WebSocket handler
+async def ws_handler(websocket):
+    websock.add(websocket)
+    try:
+        async for message in websocket:
+            print(f"[SERVER] Received {message}")
+            for client in websock:
+                if client != websocket:
+                    print(f"Forwarding")
+                    try: await client.send(message)
+                    except: websock.discard(client)
+    except websockets.exceptions.ConnectionClosed:
+        print("[WebSocket] Client disconnected.")
+        websock.discard(websocket)
+
+# WebSocket server loop
+async def ws_server():
+    async with websockets.serve(ws_handler, "0.0.0.0", PORT):
+        await asyncio.Future()  # Run forever
+
+def open_port():
+    config.event_loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(config.event_loop)
+    config.event_loop.run_until_complete(ws_server())
+    config.event_loop.run_forever()
 
 class WebSocketClient:
     def __init__(self, uri):
@@ -17,9 +45,12 @@ class WebSocketClient:
 
     async def send_command(self, command: str) -> str:
         try:
+            print(self.uri)
             if self.websocket is None or not getattr(self.websocket, "open", False):
                 await self.connect()
+            print(self.websocket)
             await self.websocket.send(command)
+            print(f"[CONSOLE] Sent: {command}")
             response = await self.websocket.recv()
             return response
         except Exception as e:
@@ -69,6 +100,7 @@ class App(tk.Tk):
 if __name__ == "__main__":
     print("Port: ", PORT)
     WS_SERVER = f"ws://localhost:{PORT}"
+    threading.Thread(target=open_port, daemon=True).start()
     client = WebSocketClient(WS_SERVER)
     app = App(client)
     app.mainloop()

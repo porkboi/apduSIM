@@ -1,16 +1,12 @@
 import re
 import json
 import asyncio
-import threading
-import socket
-import websockets
 from src.oldFuncs import *
 from src.newFuncs import *
 import config
 import sys
 import requests
-
-websock = set()
+import websockets
 
 class WSStdoutRedirector:
     def __init__(self, terminal=sys.__stdout__):
@@ -24,45 +20,14 @@ class WSStdoutRedirector:
     def flush(self):
         self.terminal.flush()
 
-    def flush_output(self):
+    async def flush_output(self, wb):
         if self.buffer:
-            for wb in websock.copy():
-                try:
-                    
-                    asyncio.run_coroutine_threadsafe(wb.send(self.buffer), config.event_loop)
-                except Exception:
-                    websock.discard(wb)
+            try:
+                await wb.send(self.buffer)
+            except Exception:
+                websock.discard(wb)
             self.buffer=""
 
-# WebSocket command queue
-
-def find_free_port():
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(("", 0))
-        return s.getsockname()[1]
-
-# WebSocket handler
-async def ws_handler(websocket):
-    try:
-        websock.add(websocket)
-        async for message in websocket:
-            print(f"[WebSocket] Received: {message}")
-            config.ws_command_queue.put(message)
-            #await websocket.send(f"Command '{message}' received.")
-    except websockets.exceptions.ConnectionClosed:
-        print("[WebSocket] Client disconnected.")
-        websock.discard(websocket)
-
-# WebSocket server loop
-async def ws_server():
-    async with websockets.serve(ws_handler, "0.0.0.0", config.PORT):
-        await asyncio.Future()  # Run forever
-
-def open_port():
-    config.event_loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(config.event_loop)
-    config.event_loop.run_until_complete(ws_server())
-    config.event_loop.run_forever()
 
 # Load empty JSON if not existing
 with open("dict.json", "w") as f:
@@ -72,12 +37,19 @@ with open("dict.json", "r") as f:
 
 def get_dynamic_port():
     try:
-        response = requests.get("http://localhost:8000/get-port")
+        response = requests.get("http://localhost:8080/get-port")
         return response.json()["port"]
     except Exception:
         raise ValueError
 
-def main():
+async def listen(port):
+    uri = f"ws://localhost:{port}" 
+    wb = await websockets.connect(uri)
+    print("Connected, waiting for message")
+    message = await wb.recv()
+    return wb, message
+
+async def main():
     config.command_buffer = [f"{cmd}" for cmd in INITIAL_COMMANDS]
     print("Initial commands added. Enter APDU commands or use WebSocket")
     config.command_buffer.append("bridge")
@@ -86,15 +58,13 @@ def main():
     config.command_buffer=[]
     new = SIMTransportLayer()
     pre = "> "
+    wb = None
     while True:
         user_input = ""
         if config.SERVER:
-            if not config.ws_command_queue.empty():
-                user_input = config.ws_command_queue.get()
-                print(f"[WebSocket Command] >> {user_input}")
-                sys.stdout = WSStdoutRedirector()
-            else:
-                continue
+            wb, user_input = await listen(config.PORT)
+            sys.stdout = WSStdoutRedirector()
+            print(user_input)
         else:
             user_input = input(pre).strip().lower()
             sys.stdout = sys.__stdout__
@@ -160,12 +130,12 @@ def main():
         elif user_input == "list":
             list_profile(new)
             sys.stdout.flush()
-            sys.stdout.flush_output()
+            await sys.stdout.flush_output(wb)
 
         elif user_input == "get_eid":
             get_eid(new)
             sys.stdout.flush()
-            sys.stdout.flush_output()
+            await sys.stdout.flush_output(wb)
 
         elif user_input.startswith("delete"):
             match = re.search(r'iccid=([0-9A-Za-z]+)', user_input)
@@ -198,7 +168,7 @@ def main():
         elif user_input == "r":
             scan(new)
             sys.stdout.flush()
-            sys.stdout.flush_output()
+            await sys.stdout.flush_output(wb)
 
         elif user_input.startswith("select"):
             match pre:
@@ -271,7 +241,7 @@ if __name__ == "__main__":
     print("Finding Server...")
     config.PORT = get_dynamic_port()
 
-    threading.Thread(target=open_port, daemon=True).start()
-    time.sleep(1)
+    print("Port: ", config.PORT)
+
     #threading.Thread(target=runApp, daemon=True).start()
-    main()
+    asyncio.run(main())

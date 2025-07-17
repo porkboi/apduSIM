@@ -8,7 +8,7 @@ event_loop = None
 
 websock = set()
 
-DEVICE_PATH = "/dev/ttyACM0"
+DEVICE_PATH = "/dev/ttyACM1"
 
 ws_command_queue = Queue()
 
