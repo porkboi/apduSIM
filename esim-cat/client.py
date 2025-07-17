@@ -144,6 +144,8 @@ async def main():
                 delete_profile(new, iccid)
                 print("Left:")
                 list_profile(new)
+                sys.stdout.flush()
+                await sys.stdout.flush_output(wb)
             else:
                 print("iccid missing. Hint: include iccid=")
 
@@ -153,6 +155,8 @@ async def main():
                 iccid = match.group(1)
                 enable_profile(new, iccid)
                 print(f"Active: {iccid}, Disabled Previous")
+                sys.stdout.flush()
+                await sys.stdout.flush_output(wb)
             else:
                 print("iccid missing. Hint: include iccid=")
 
@@ -162,6 +166,8 @@ async def main():
                 iccid = match.group(1)
                 disable_profile(new, iccid)
                 print(f"Disabled: {iccid}")
+                sys.stdout.flush()
+                await sys.stdout.flush_output(wb)
             else:
                 print("iccid missing. Hint: include iccid=")
 
@@ -218,6 +224,8 @@ async def main():
                 if match2:
                     activation = match2.group(1).upper()
                     provision(new, domain, activation)
+                    sys.stdout.flush()
+                    await sys.stdout.flush_output(wb)
                 else:
                     print("Poorly formed activation code.")
             else:
