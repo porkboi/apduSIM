@@ -1,3 +1,4 @@
 requests
-tkinter
 websockets
+fastapi
+uvicorn

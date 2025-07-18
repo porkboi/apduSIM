@@ -11,13 +11,15 @@ python3 shell.py
 
 For server-client, run
 ```shell
-python3 entry.py
+uvicorn entry:app --port 8080
 ```
+Open http://127.0.0.1:8080/
+
 Then run:
 ```shell
 python3 client.py
 ```
-TODO: COnvert to Golang code
+TODO: Convert to Golang code
 
 ---
 

@@ -9,9 +9,10 @@ import requests
 import websockets
 
 class WSStdoutRedirector:
-    def __init__(self, terminal=sys.__stdout__):
+    def __init__(self, wb, terminal=sys.__stdout__):
         self.terminal = terminal
         self.buffer = ""
+        self.websocket = wb
     
     def write(self, message):
         self.terminal.write(message)
@@ -22,10 +23,7 @@ class WSStdoutRedirector:
 
     async def flush_output(self, wb):
         if self.buffer:
-            try:
-                await wb.send(self.buffer)
-            except Exception:
-                websock.discard(wb)
+            await wb.send(self.buffer)
             self.buffer=""
 
 
@@ -42,10 +40,7 @@ def get_dynamic_port():
     except Exception:
         raise ValueError
 
-async def listen(port):
-    uri = f"ws://localhost:{port}" 
-    wb = await websockets.connect(uri)
-    print("Connected, waiting for message")
+async def listen(wb, port):
     message = await wb.recv()
     return wb, message
 
@@ -58,12 +53,14 @@ async def main():
     config.command_buffer=[]
     new = SIMTransportLayer()
     pre = "> "
-    wb = None
+    uri = f"ws://localhost:{config.PORT}" 
+    wb = await websockets.connect(uri)
+    print("Connected, waiting for message")
     while True:
         user_input = ""
         if config.SERVER:
-            wb, user_input = await listen(config.PORT)
-            sys.stdout = WSStdoutRedirector()
+            wb, user_input = await listen(wb, config.PORT)
+            sys.stdout = WSStdoutRedirector(wb)
             print(user_input)
         else:
             user_input = input(pre).strip().lower()
@@ -223,7 +220,7 @@ async def main():
                 match2 = re.search(r'\$([^$]+)$', user_input)
                 if match2:
                     activation = match2.group(1).upper()
-                    provision(new, domain, activation)
+                    await asyncio.to_thread(provision, new, domain, activation) #async to thread is needed to keep ping alive
                     sys.stdout.flush()
                     await sys.stdout.flush_output(wb)
                 else:
