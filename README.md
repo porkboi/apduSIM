@@ -1,94 +1,163 @@
-<h1>apduSIM</h1>
+# apduSIM
 
-Suite of Applications for eSIM exploration.
+`apduSIM` is a hardware-focused eSIM research workspace centered around a Python APDU console for talking to an eUICC through a Bus Pirate in HDUART mode.
 
-Credit to the lpac and pcsc project.
+![Platform](https://img.shields.io/badge/platform-linux-lightgrey)
+![Python](https://img.shields.io/badge/python-3.x-blue)
+![Hardware](https://img.shields.io/badge/hardware-Bus%20Pirate-orange)
+![Status](https://img.shields.io/badge/status-research-red)
+![License](https://img.shields.io/badge/license-mixed-yellow)
 
-<h1>Requirements</h1>
+**Tags:** `esim`, `euicc`, `apdu`, `smartcard`, `bus-pirate`, `pcsc`, `lpac`, `python`, `security-research`, `iso7816`
 
-- Ubuntu 24.04.2 LTS
-- Python3
-- cmake
-- meson
-- Knowledge on how to use a CLI
+The repository also includes locally modified copies of:
 
-<h1>Ubuntu Setup</h1>
+- `esim-cat/`: the main Python console, transport layer, and optional websocket dashboard
+- `lpacRACK/`: a forked `lpac` tree kept here for experimentation
+- `pcscRACK/`: a forked `pcsc-lite` tree kept here for low-level smart card stack changes
 
-Find and ensure the port connected to your Bus Pirate is the ASCII port ```/dev/ttyACMx``` where x can be checked by running ```lsusb```
+This is not a polished end-user product. It is a research repo with working code, local patches, and embedded upstream projects.
 
-<h2> Changes to lpac and pcsc </h2>
+## What It Does
 
-| Change Location | Exact change                                                                 | Rationale                                                        |
-|-----------------|------------------------------------------------------------------------------|------------------------------------------------------------------|
-| pcsc-lite       | Disable mutex in ifdwrapper.c                                                | Allow writing in between threads for MITM                        |
-|                 | Disable SCARD failures and force SCardReconnect without change detection in winscard.c | Bypass same eSIM verification locally                 |
-|                 | Force preferred dwords in PHSetProtocol in prothandler.c                     | This forces a protocol to be taken regardless of the SCARD status|
-| lpac            | es10b_load_bound_profile_package                                             | Ensure logical channel communication to eUICC is valid           |
-|                 | Close and reopened new logical channel                                       |                                                                  |
-|                 | Changing server to localhost for connections to fake SMDPs                   | Yes                                                              |
+- Sends raw APDUs over a Bus Pirate ASCII serial interface
+- Opens a logical channel and provides helper commands for common eUICC flows
+- Supports interactive profile operations such as listing profiles, fetching EID, enabling, disabling, and deleting profiles
+- Includes a simple FastAPI and WebSocket dashboard for remote command entry
+- Keeps modified `lpac` and `pcsc-lite` sources alongside the Python tooling used to test against them
 
+## Repository Layout
 
-<h2>eSIM-cat</h2>
-This software aims to allow users to send custom APDU commands over HDUART through a Bus Pirate to an eSIM card, while listening for responses. This is compabilitable with SGP.22/ ISO-7816 standards, and does not need a SmartCard Reader.
+```text
+.
+├── README.md
+├── requirements.txt
+├── esim-cat.py              # older standalone Python entrypoint
+├── example_apdu.txt         # sample APDU input
+├── esim-cat/                # main Python console and web mode
+│   ├── shell.py
+│   ├── entry.py
+│   ├── client.py
+│   ├── server.py
+│   ├── config.py
+│   └── src/
+├── lpacRACK/                # modified lpac source tree
+└── pcscRACK/                # modified pcsc-lite source tree
+```
 
-<h3>Setup</h3>
+## Requirements
 
-Run ```cd esim-cat```
+Tested assumptions in the repo and existing docs point to:
 
-Run ```pip install -r requirements.txt```
+- Ubuntu 24.04
+- Python 3
+- A Bus Pirate exposing a serial device such as `/dev/ttyACM0` or `/dev/ttyACM1`
+- Build tooling if you plan to work with the vendored forks:
+  - `cmake` for `lpacRACK`
+  - autotools and related packages for `pcscRACK`
 
-<h3>Usage</h3>
-Write the APDUs you need, syntax:
+Python dependencies:
 
-```APDU:{number repeats}``` : It is what it is, called saved ```vars``` by calling [iccid1]; reference [here](https://github.com/porkboi/apduSIM/blob/main/clipboard.go)
+- `requests`
+- `websockets`
+- `fastapi`
+- `uvicorn`
 
-```parse=kwargs``` : kwargs= ```GET.EID/GET.ICCID```
+## Quick Start
 
-```ar``` : Auto-Response (up to 256 bytes)
+1. Install Python dependencies from the repo root:
 
-```run``` : Auto-config to Half-Duplex UART and CLK cycle generation.
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
 
-```exit``` : It is what it is
+2. Confirm the serial device path used by the Python tooling.
 
-You can also use pre-programmed functions, namely:
+The current default is set in [`esim-cat/config.py`](/home/porkboi/Documents/apdusim/apduSIM/esim-cat/config.py) as `DEVICE_PATH = "/dev/ttyACM1"`.
 
-```d``` : turns on debugging mode
+3. Start the interactive console:
 
-```provision ac=LPA${domain}${activation}``` : Provide your activation code after ac, skips run
+```bash
+cd esim-cat
+python3 shell.py
+```
 
-```delete iccid=***``` : deleted the selected iccid and runs ```list``` after
+## Interactive Console
 
-```list``` : lists all avaliable profiles
+The main console lives in [`esim-cat/shell.py`](/home/porkboi/Documents/apdusim/apduSIM/esim-cat/shell.py). It initializes the Bus Pirate, creates a transport object, and accepts interactive commands.
 
-```get_eid``` : It is what it is
+Common commands:
 
-<h2>lpacRACK: </h2>
+- `list`
+- `get_eid`
+- `enable iccid=<ICCID>`
+- `disable iccid=<ICCID>`
+- `delete iccid=<ICCID>`
+- `select aid=<AID>`
+- `provision ...`
+- raw APDUs such as `00a4040000`
 
-Used to send illegal commands to eUICCs on esim, incurs an SW1/SW2 69 85 error. This is due to scp03 (and hence AES) keys, a security feature of eUICCs.
+The transport and helper logic are implemented under [`esim-cat/src/`](/home/porkboi/Documents/apdusim/apduSIM/esim-cat/src).
 
-<h3>Setup</h3>
+## Web Dashboard Mode
 
-Hit the ```cmake```
+The repo also includes a lightweight dashboard flow:
 
-<h3>Usage</h3>
+1. Start the FastAPI app:
 
-Runs like normal lpac, refer to USAGE.md
+```bash
+cd esim-cat
+uvicorn entry:app --port 8080
+```
 
-<h2>pcscRACK</h2>
+2. Open `http://127.0.0.1:8080/`
 
-Used to illegally authenticate swapped SIM cards by disabling all warnings and rebuilding daemon to re-enable a new secure channel.
+3. Start a client process:
 
-<h3>Setup</h3>
+```bash
+cd esim-cat
+python3 client.py
+```
 
-1. Run ```sudo apt remove pcscd
-sudo apt install libccid, automake, autoconf-archives```
-2. In the top level directory (@) run ```sudo autoconf -i```
-3. Run ```automake
-autoreconf -fiv
-./configure --prefix=/usr/local --enable-usbdropdir=/usr/lib/pcsc/drivers
-make -j$(nproc)
-sudo make install
-sudo ldconfig
-sudo systemctl restart pcscd
-pscs_scan```
-4. Use gdb
+Relevant files:
+
+- [`esim-cat/entry.py`](/home/porkboi/Documents/apdusim/apduSIM/esim-cat/entry.py)
+- [`esim-cat/client.py`](/home/porkboi/Documents/apdusim/apduSIM/esim-cat/client.py)
+- [`esim-cat/server.py`](/home/porkboi/Documents/apdusim/apduSIM/esim-cat/server.py)
+
+## Included Forks
+
+### `lpacRACK`
+
+[`lpacRACK/`](/home/porkboi/Documents/apdusim/apduSIM/lpacRACK) is a bundled `lpac` source tree used for local experimentation. Build and usage details remain in its upstream-style docs:
+
+- [`lpacRACK/README.md`](/home/porkboi/Documents/apdusim/apduSIM/lpacRACK/README.md)
+- [`lpacRACK/docs/USAGE.md`](/home/porkboi/Documents/apdusim/apduSIM/lpacRACK/docs/USAGE.md)
+- [`lpacRACK/docs/DEVELOPERS.md`](/home/porkboi/Documents/apdusim/apduSIM/lpacRACK/docs/DEVELOPERS.md)
+
+### `pcscRACK`
+
+[`pcscRACK/`](/home/porkboi/Documents/apdusim/apduSIM/pcscRACK) is a bundled `pcsc-lite` source tree with local modifications. Its source and build system are separate from the Python tooling. Start with:
+
+- [`pcscRACK/README.md`](/home/porkboi/Documents/apdusim/apduSIM/pcscRACK/README.md)
+- [`pcscRACK/README`](/home/porkboi/Documents/apdusim/apduSIM/pcscRACK/README)
+
+## Current State
+
+This repo is useful as a lab workspace, but it has rough edges:
+
+- configuration is hard-coded in places
+- hardware assumptions are Linux-specific
+- there is no unified install script
+- the root project does not yet have automated tests
+- the embedded forks contain generated build output that should eventually be cleaned up
+
+## Safety and Scope
+
+Use this repository only on hardware, profiles, and infrastructure you are authorized to test. Smart card and eSIM workflows are security-sensitive, and the included forks intentionally expose low-level behavior for research.
+
+## Credits
+
+This repo builds on work from the upstream `lpac` and `pcsc-lite` projects, plus the local Python tooling under `esim-cat`.
